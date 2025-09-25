@@ -7,13 +7,14 @@ from viktor.views import PlotlyView, PlotlyResult
 import pandas as pd
 import numpy as np
 from src.Helper import create_df
-from src.Defaults import create_default_mat_prop, create_Dfound_example_model, create_Dset_example_model, create_Dset_example_model_MDR, create_dsettlement_model
+from src.Defaults import create_default_mat_prop, create_dsettlement_model
 from src.Dsettl import create_Dset_geometry, create_Dset_model
 from src.Visualizations import create_geo_profile_and_map, create_heatmap
 from io import BytesIO, StringIO
+import geolib as gl
 
-model_types = {'NEN_BJERRUM': vkt.dsettlement.CalculationModel.NEN_BJERRUM, 'NEN_KOPPEJAN': vkt.dsettlement.CalculationModel.NEN_KOPPEJAN, 'ISOTACHE': vkt.dsettlement.CalculationModel.ISOTACHE}
-cons_model_types = {"DARCY": vkt.dsettlement.ConsolidationModel.DARCY, "TERZAGHI": vkt.dsettlement.ConsolidationModel.TERZAGHI}
+model_types = {'NEN_BJERRUM': gl.models.dsettlement.internal.SoilModel.NEN_BJERRUM, 'NEN_KOPPEJAN': gl.models.dsettlement.internal.SoilModel.NEN_KOPPEJAN, 'ISOTACHE': gl.models.dsettlement.internal.SoilModel.ISOTACHE}
+cons_model_types = {"DARCY": gl.models.dsettlement.internal.ConsolidationModel.DARCY, "TERZAGHI": gl.models.dsettlement.internal.ConsolidationModel.TERZAGHI}
 
 def get_location_filter_list(params, **kwargs):
         """
@@ -194,70 +195,16 @@ class Controller(vkt.Controller):
     def create_Dsettl_model(self, params):
         # Create the model with misc. options.
         material_properties = params.page_1.tab_1.section_2.table_1
-        result = create_dsettlement_model(material_properties)
+        const_model = model_types[params.page_1.tab_1.section_1.autocomplete_field_1]
+        consol_model = cons_model_types[params.page_1.tab_1.section_1.option_field_1]
+
+        result = create_dsettlement_model(material_properties, const_model, consol_model)
 
         return result
         
 
 
-    def create_Dfound_model(self, params):
-        # Create the model with misc. options.
-        result = create_Dfound_example_model("Example Model", "Maureen Klomp")
-
-        return result
-    
-
-    # def create_Dsettl_model(self, params):
-    #     # Create the model with misc. options.
-    #     result = create_Dset_example_model("Example Model", "Maureen Klomp")
-
-    #     return result
-
-
-    def run_models(self, params):
-        # Create dataframes for locations and boreholes
-        df_loc, df_bh = self.input_csvs(params)
-
-        #select parameters from input
-        coord_system = params.page_1.tab_2.option_field_1
-        GWT = params.page_1.tab_4.number_field_1
-        
-        unit_weight = params.page_1.tab_5.number_field_1
-        thickn_load = params.page_1.tab_5.number_field_2
-        load = unit_weight * thickn_load
-
-        model_type = params.page_1.tab_1.section_1.autocomplete_field_1
-        consol_type = params.page_1.tab_1.section_1.option_field_1
-
-        # Select input tables
-        material_table = params.page_1.tab_1.section_2.table_1
-
-        # Loop over all locations and create models
-        sld = []
-        for location in df_loc['Location ID']:
-            # Use create model function.
-            input_file = create_Dset_model(model_type, consol_type, location, df_loc, df_bh, material_table, coord_system, load)
-
-            # Run the analysis with the generated input file (requires worker).
-            analysis = vkt.dsettlement.DSettlementAnalysis(input_file)
-            analysis.execute(300)
-
-            # Obtain the result file.
-            sld_file = analysis.get_sld_file()
-
-            # Read the raw content
-            sld_bytes = sld_file.getvalue()
-            sld_string = sld_bytes.decode('utf-8')
-
-            # TODO Create functions for extracting result from string
-            sld.append(sld_string)
-
-        return sld
-    
-    
-
-    
-    
+  
     
 
     

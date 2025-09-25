@@ -2,7 +2,7 @@ INPUT FILE FOR D-SETTLEMENT
 ==============================================================================
 COMPANY    : 
 DATE       : 25-09-2025
-TIME       : 18:38:03
+TIME       : 18:55:05
 FILENAME   : 
 CREATED BY : GEOLib version 2.7.0
 ==========================    BEGINNING OF DATA     ==========================
@@ -15,8 +15,8 @@ D-Settlement=1011
 
 [MODEL]
 1 : Dimension = 2D
-1 : Calculation type = Terzaghi
-0 : Model = NEN - Koppejan
+0 : Calculation type = Darcy
+1 : Model = NEN - Bjerrum
 0 : Strain type = Linear
 0 : Vertical drains = FALSE
 0 : Fit for settlement plate = FALSE
