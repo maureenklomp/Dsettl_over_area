@@ -1,0 +1,14 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+
+        {
+            "name": "VIKTOR Debug",
+            "type": "python",
+            "request": "launch",
+            "module": "viktor_debugging",
+            "justMyCode": true
+            
+        }
+    ]
+}

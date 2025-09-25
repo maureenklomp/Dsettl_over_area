@@ -1,0 +1,3 @@
+[console_scripts]
+geolib_server=geolib.service.main:app
+
