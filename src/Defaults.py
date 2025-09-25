@@ -12,32 +12,8 @@ from datetime import timedelta
 import os
 
 def create_dsettlement_model(material_properties):
-    # # Set environment variable for geolib
-    # os.environ['DSETTLEMENT_CONSOLE_PATH'] = r'C:\Program Files (x86)\Deltares\D-Settlement 23.2.1'
-    
-    # # Alternative approach - set the executable directly
-    # dsettlement_path = r'C:\Program Files (x86)\Deltares\D-Settlement 23.2.1\DSettlement.exe'
-    
-    # # Check if executable exists
-    # if not os.path.exists(dsettlement_path):
-    #     print("Option 1")
-    #     raise FileNotFoundError(f"D-Settlement executable not found at {dsettlement_path}")
-    
-    # # Configure geolib - try multiple approaches
-    # try:
-    #     gl.models.dsettlement.internal.DSETTLEMENT_EXECUTABLE = dsettlement_path
-    #     print(gl.models.dsettlement.internal.DSETTLEMENT_EXECUTABLE)
-    # except:
-    #     pass
-    
-    # try:
-    #     gl.env.DSETTLEMENT_CONSOLE_PATH = r'C:\Program Files (x86)\Deltares\D-Settlement 23.2.1'
-    #     print("Option 3")
-    # except:
-    #     pass
     
     model = gl.DSettlementModel()
-
     model.set_model(constitutive_model= gl.models.dsettlement.internal.SoilModel.NEN_BJERRUM,
                     consolidation_model= gl.models.dsettlement.internal.ConsolidationModel.DARCY,
                     is_two_dimensional=True,
@@ -122,13 +98,25 @@ def create_dsettlement_model(material_properties):
         gamma_wet=20.0,
     )
 
-    input_test_file = Path("Trial_2.sli")
+    input_test_file = Path("Example2.sli")
     model.serialize(input_test_file)
 
-    model.filename = input_test_file
-    # model.execute()
+    # Try execution approaches
+    file = vkt.File()
+    path = Path(file.source)
+    model.serialize(path)
+    
+    dsettlementanalysis = vkt.dsettlement.DSettlementAnalysis(input_file=file)
+    dsettlementanalysis.execute()
+   
+    # Obtain the result file.
+    sld_file = dsettlementanalysis.get_sld_file()
 
-    return model
+    # Save results to a local file (if running locally)
+    with open("Example2.sld", "w") as f:
+        f.write(sld_file.getvalue())   
+
+    return sld_file
 
 
 
