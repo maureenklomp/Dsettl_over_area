@@ -98,4 +98,23 @@ def materials_to_dict(material_props):
     return material_properties
 
 
+def find_ground_level(df_loc, location_id):
+    """
+    Find the ground level for a specific location ID in the dataframe.
+    Returns ground level for that location.
+    """
+    if (location_id is not None and df_loc is not None and not df_loc.empty):
+        groundlevel = df_loc['Ground Level'].iloc[0]
 
+        return groundlevel
+
+
+def find_filtered_df_bh(df_loc, df_bh, location_id):
+    """
+    Find the borehole data for a specific location name in the dataframe.
+    Returns a dataframe with borehole data for that location.
+    """
+    if (df_bh is not None and location_id is not None and df_loc is not None and not df_loc.empty):
+        filtered_df_bh = df_bh[df_bh['Location ID'] == location_id]
+    
+        return filtered_df_bh

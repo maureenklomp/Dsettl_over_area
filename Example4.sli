@@ -2,7 +2,7 @@ INPUT FILE FOR D-SETTLEMENT
 ==============================================================================
 COMPANY    : 
 DATE       : 26-09-2025
-TIME       : 15:54:00
+TIME       : 16:40:54
 FILENAME   : 
 CREATED BY : GEOLib version 2.7.0
 ==========================    BEGINNING OF DATA     ==========================
@@ -1038,8 +1038,8 @@ SoilDefaultElasticity=1
 [GEOMETRY DATA]
 [POINTS]
   16  - Number of geometry points -
-       1          0.000         -1.000       -999.000
-       2         50.000         -1.000       -999.000
+       1          0.000         -1.200       -999.000
+       2         50.000         -1.200       -999.000
        3          0.000        -20.000       -999.000
        4         50.000        -20.000       -999.000
        5          0.000         -8.750       -999.000
@@ -1052,8 +1052,8 @@ SoilDefaultElasticity=1
       12         50.000         -3.000       -999.000
       13          0.000         -1.500       -999.000
       14         50.000         -1.500       -999.000
-      15          0.000         -0.450       -999.000
-      16         50.000         -0.450       -999.000
+      15          0.000          0.010       -999.000
+      16         50.000          0.010       -999.000
 [END OF POINTS]
 
 [CURVES]
@@ -1209,12 +1209,12 @@ SoilDefaultElasticity=1
 [NON-UNIFORM LOADS]
     1 = number of items
 My First Load
-          0  18.0  20.0  0   0 = Time, Gamma dry, Gamma wet, Temporary, Endtime
+          0  20.0  20.0  0   0 = Time, Gamma dry, Gamma wet, Temporary, Endtime
     4 = Number of co-ordinates
-       10.0    -0.45 = X, Y
-       10.0    1.5 = X, Y
-       40.0    1.5 = X, Y
-       40.0    -0.45 = X, Y
+       10.0    0.01 = X, Y
+       10.0    1.01 = X, Y
+       40.0    1.01 = X, Y
+       40.0    0.01 = X, Y
 [END OF NON-UNIFORM LOADS]
 [WATER LOADS]
     0 = number of items

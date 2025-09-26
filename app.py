@@ -6,11 +6,11 @@ from plotly.subplots import make_subplots
 from viktor.views import PlotlyView, PlotlyResult
 import pandas as pd
 import numpy as np
-from src.Helper import create_df
+from src.Helper import create_df, find_ground_level, find_filtered_df_bh
 from src.Defaults import create_default_mat_prop
 from src.Dsettl import create_Dset_geometry, create_dsettlement_model
 from src.Dsettl_results import extract_iteration_results_dset
-from src.Visualizations import create_geo_profile_and_map, create_heatmap
+from src.Visualizations import create_geo_profile_and_map, create_heatmap, create_settl_graphs
 from io import BytesIO, StringIO
 import geolib as gl
 
@@ -85,9 +85,18 @@ class Parametrization(vkt.Parametrization):
     page_1.tab_5.section_1.number_field_2 = vkt.NumberField("Thickness", flex=100, suffix="m", min=0)
     
 
-    page_2 = vkt.Page("Settlement Analysis Results", views=["plot_settl_results", "get_combined_geo_profile_and_map", "plot_heatmap"], width=20)
-    page_2.number_field_1 = vkt.NumberField("Adjust the point size on the heatmap", default=50, min=0, max=200, step=10, variant="slider", flex=100)
-    page_2.is_true = vkt.BooleanField("Show annotations on heatmap", default=True, flex=100)
+    page_2 = vkt.Page("ALL Settlement results", views=["plot_settl_results"], width=20)
+    page_2.number_field_2 = vkt.NumberField("Settlement at ... months:", default=6, min=0, max=24, step=1, variant="slider", flex=100)
+    
+    page_3 = vkt.Page("Settlement over time", views=["plot_settl_graph"], width=20)
+    page_3.boolean_field_1 = vkt.BooleanField("Logarithmic time axis", default=True, flex=100)
+    page_3.option_field_1 = page_1.tab_3.option_field_1
+
+    page_4 = vkt.Page("Heatmap", views=["plot_heatmap"], width=20)
+    page_4.number_field_1 = page_2.number_field_2
+    page_4.number_field_2 = vkt.NumberField("Adjust the point size on the heatmap", default=50, min=0, max=200, step=10, variant="slider", flex=100)
+    page_4.is_true = vkt.BooleanField("Show annotations on heatmap", default=True, flex=100)
+
 
 class Controller(vkt.Controller):
     label = "My Entity Type"
@@ -146,23 +155,82 @@ class Controller(vkt.Controller):
         return vkt.TableResult(filtered_df_bh)
     
 
-    @vkt.ImageView("Heatmap")
-    def plot_heatmap(self, params, **kwargs):
+    @vkt.TableView('ALL Settlement results', duration_guess=1)
+    def plot_settl_results(self, params, **kwargs):
+        # Define time in days:
+        months = params.page_2.number_field_2
+        time_in_days = months * 30 # Approximate conversion from months to days
+
+        # Create and run model
+        ground_level = -0.45
+        d = self.create_Dsettl_model(params, ground_level)
+        result_dict = extract_iteration_results_dset(d, time=time_in_days)
+        name = "2_006"
+
+        # Create DataFrame with dictionary keys as column names
+        result = pd.DataFrame([result_dict], index = [name])  # Pass as list to create one row with keys as columns
+    
+        # TableView can handle DataFrames directly
+        if isinstance(result, pd.DataFrame):
+            return vkt.TableResult(result)
+        else:
+            # If not a DataFrame, create a simple DataFrame to display
+            df = pd.DataFrame({'Result': [str(result)]})
+            return vkt.TableResult(df)
+    
+
+    @vkt.PlotlyView('Settlement over time', duration_guess=1)
+    def plot_settl_graph(self, params, **kwargs):
         # Create dataframes for locations and boreholes
         df_loc, df_bh = self.input_csvs(params)
 
-        point_size = params.page_2.number_field_1
-        toggle_annotations = params.page_2.is_true
-
-        if not df_loc.empty:
-            values = df_loc['Ground Level'].tolist()
-            names = df_loc['Location ID'].tolist()
+        material_table = params.page_1.tab_1.section_2.table_1
         
-        # svg_data = create_heatmap(df_loc, '', '')
-        svg_data = create_heatmap(df_loc, values, names, point_size, toggle_annotations)
+        location_id = params.page_1.tab_3.option_field_1
+        log = params.page_3.boolean_field_1
 
-        return vkt.ImageResult(svg_data)
-    
+        ground_level = find_ground_level(df_loc, location_id)
+        filtered_df_bh = find_filtered_df_bh(df_loc, df_bh, location_id)
+
+        # print(ground_level)
+
+        # if not filtered_df_bh.empty:
+        #     materials, depth_tops, depth_bases, colors, names, thicknesses = create_Dset_geometry(filtered_df_bh, ground_level, material_table)
+        
+        # print(depth_bases)
+        # print(names)
+
+        time_in_days = np.logspace(0.1, 4, 20)
+        d = self.create_Dsettl_model(params, ground_level)
+
+        settlements = []
+        for t in time_in_days:
+            result_dict = extract_iteration_results_dset(d, time=t)
+            settlements.append(result_dict.get('settlement', 0))
+        
+        fig = create_settl_graphs(d, log)
+
+        # fig = go.Figure()
+        # fig.add_trace(go.Scatter(x=time_in_days, y=settlements, mode='lines+markers', name='Settlement over time'))
+        # fig.update_layout(title='Settlement over time', xaxis_title='Time (days)', yaxis_title='Settlement (m)')
+        return vkt.PlotlyResult(fig)  # Changed from: return fig
+        
+
+    def create_Dsettl_model(self, params, ground_level):
+        # Create the model with misc. options.
+        material_properties = params.page_1.tab_1.section_2.table_1
+        const_model = model_types[params.page_1.tab_1.section_1.autocomplete_field_1]
+        consol_model = cons_model_types[params.page_1.tab_1.section_1.option_field_1]
+
+        # groundlevel = -0.45
+        GWT = params.page_1.tab_4.number_field_1
+        load_value = params.page_1.tab_5.section_1.number_field_1
+        load_thickness = params.page_1.tab_5.section_1.number_field_2
+
+        result = create_dsettlement_model(material_properties, const_model, consol_model, GWT, load_value, load_thickness, ground_level)
+
+        return result
+
     
     @vkt.PlotlyView('Geological Profile', duration_guess=1)
     def get_combined_geo_profile_and_map(self, params, **kwargs):
@@ -179,38 +247,27 @@ class Controller(vkt.Controller):
         return vkt.PlotlyResult(fig)
     
 
-    @vkt.TableView('Settlement results', duration_guess=1)
-    def plot_settl_results(self, params, **kwargs):
-        # d = self.create_Dfound_model(params)
-        d = self.create_Dsettl_model(params)
-        # result = extract_iteration_results_dset(d, time=10000)
-        result_dict = extract_iteration_results_dset(d, time=10000)  # Example time in days
+    @vkt.ImageView("Heatmap")
+    def plot_heatmap(self, params, **kwargs):
+        # Create dataframes for locations and boreholes
+        df_loc, df_bh = self.input_csvs(params)
+
+        point_size = params.page_4.number_field_2
+        toggle_annotations = params.page_4.is_true
+
+        time = params.page_4.number_field_1 * 30        # Convert months to days
+
+        if not df_loc.empty:
+            values = df_loc['Ground Level'].tolist()
+            names = df_loc['Location ID'].tolist()
         
-        # Create DataFrame with dictionary keys as column names
-        result = pd.DataFrame([result_dict])  # Pass as list to create one row with keys as columns
-    
-        # TableView can handle DataFrames directly
-        if isinstance(result, pd.DataFrame):
-            return vkt.TableResult(result)
-        else:
-            # If not a DataFrame, create a simple DataFrame to display
-            df = pd.DataFrame({'Result': [str(result)]})
-            return vkt.TableResult(df)
-        
-        
-    def create_Dsettl_model(self, params):
-        # Create the model with misc. options.
-        material_properties = params.page_1.tab_1.section_2.table_1
-        const_model = model_types[params.page_1.tab_1.section_1.autocomplete_field_1]
-        consol_model = cons_model_types[params.page_1.tab_1.section_1.option_field_1]
+        # svg_data = create_heatmap(df_loc, '', '')
+        svg_data = create_heatmap(df_loc, values, names, point_size, toggle_annotations)
 
-        result = create_dsettlement_model(material_properties, const_model, consol_model)
-
-        return result
-        
+        return vkt.ImageResult(svg_data)
 
 
-  
-    
 
-    
+
+
+

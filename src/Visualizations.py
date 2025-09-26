@@ -4,6 +4,7 @@ from scipy.interpolate import griddata
 from io import StringIO
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots 
+from src.Dsettl_results import extract_iteration_results_dset
 from src.Dsettl import create_Dset_geometry
 from src.Helper import rd_to_wgs84, calculate_zoom_level
 from src.Helper import create_list_of_points
@@ -64,10 +65,10 @@ def create_geo_profile_and_map(df_loc, df_bh, Location_id, coord_system, materia
     # Add geological profile to SECOND subplot (col=2)
     if (df_bh is not None and Location_id is not None and selected_location is not None and not selected_location.empty):
         filtered_df_bh = df_bh[df_bh['Location ID'] == Location_id]
-        groundlevel = selected_location['Ground Level'].iloc[0]
+        ground_level = selected_location['Ground Level'].iloc[0]
         
         if not filtered_df_bh.empty:
-            materials, depth_tops, depth_bases, colors, names, thicknesses = create_Dset_geometry(filtered_df_bh, groundlevel, material_table)
+            materials, depth_tops, depth_bases, colors, names, thicknesses = create_Dset_geometry(filtered_df_bh, ground_level, material_table)
 
             # Add geological traces to SECOND subplot
             for i in range(len(materials)):
@@ -161,3 +162,46 @@ def create_heatmap(df, values, names, point_size, toggle_annotations):
     svg_data.seek(0)
 
     return svg_data
+
+
+def create_settl_graphs(model, log):
+    d = model
+    
+    # Create subplots: 2 rows, 1 column
+    fig = make_subplots(
+        rows=2, cols=1,
+        subplot_titles=('Total settlement over time', 'Settlement over 1st year'),
+        specs=[[{"type": "scatter"}], [{"type": "scatter"}]],  # Changed: 2 rows, 1 column each
+        row_heights=[0.5, 0.5]  # Changed from column_widths to row_heights
+    )
+
+    time_in_days = np.logspace(0.1, 4, 20)
+    time_in_days_year = np.logspace(0.1, 2.56, 12)
+    
+    settlements = []
+    for t in time_in_days:
+        result_dict = extract_iteration_results_dset(d, time=t)
+        settlements.append(result_dict.get('settlement', 0))
+
+    settlements_year = []
+    for t in time_in_days_year:
+        result_dict_year = extract_iteration_results_dset(d, time=t)
+        settlements_year.append(result_dict_year.get('settlement', 0))
+    
+    # Add traces to correct subplots
+    fig.add_trace(go.Scatter(x=time_in_days, y=settlements, mode='lines+markers', name='Total settlement'), row=1, col=1)
+    fig.add_trace(go.Scatter(x=time_in_days_year, y=settlements_year, mode='lines+markers', name='Settlement (1st year)'), row=2, col=1)
+    
+    # Update axis labels with reversed y-axis
+    fig.update_yaxes(title_text="Settlement (m)", autorange='reversed', row=1, col=1)  # Added autorange='reversed'
+    fig.update_yaxes(title_text="Settlement (m)", autorange='reversed', row=2, col=1)  # Added autorange='reversed'
+
+    if log == True:
+        fig.update_xaxes(title_text="Time (days)", type = 'log', row=1, col=1)
+        fig.update_xaxes(title_text="Time (days)", type = 'log', row=2, col=1)
+    else:
+        fig.update_xaxes(title_text="Time (days)", row=1, col=1)
+        fig.update_xaxes(title_text="Time (days)", row=2, col=1)
+
+    
+    return fig

@@ -6,8 +6,22 @@ import geolib as gl
 from pathlib import Path
 from datetime import timedelta
 
-def create_dsettlement_model(material_properties, const_model, consol_model):
+def create_dsettlement_model(material_properties, const_model, consol_model, GWT, load_value, load_thickness, ground_level):
     
+    # Catching input errors
+    violations = []
+    if const_model == 2:
+        violations.append(vkt.InputViolation("Constitutive model cannot be Isotache, only NEN-Bjerrum is currently available", fields=[const_model]))
+    if const_model == 0:
+        violations.append(vkt.InputViolation("Constitutive model cannot be Koppejan, only NEN-Bjerrum is currently available", fields=[const_model]))
+    if GWT is None:
+        violations.append(vkt.InputViolation("Groundwater level must be specified", fields=[GWT]))
+    if load_value is None or load_thickness is None:
+        violations.append(vkt.InputViolation("Load value and thickness must be specified", fields=[load_value, load_thickness]))
+
+    if violations:
+        raise vkt.UserError("Invalid input for constitutive or consolidation model", input_violations=violations)
+
     model = gl.DSettlementModel()
     model.set_model(constitutive_model= const_model,
                     consolidation_model= consol_model,
@@ -52,12 +66,12 @@ def create_dsettlement_model(material_properties, const_model, consol_model):
             raise ValueError(f"Material '{material_name}' not found in provided material properties table.")
     
     # Headline lines
-    p1 = gl.geometry.Point(x=0, z=-1)
-    p2 = gl.geometry.Point(x=50, z=-1)
+    p1 = gl.geometry.Point(x=0, z=GWT)
+    p2 = gl.geometry.Point(x=50, z=GWT)
     hl = model.add_head_line([p1, p2], is_phreatic=True)
 
     # Boundary lines
-    layers = [-20.0, -8.75, -8.0, -3.75, -3.0, -1.5, -0.45]
+    layers = [-20.0, -8.75, -8.0, -3.75, -3.0, -1.5, ground_level]
 
     p_left = []
     p_right = []
@@ -78,21 +92,21 @@ def create_dsettlement_model(material_properties, const_model, consol_model):
 
     # Add uniform load
     # set up the point list
-    point3 = gl.geometry.Point(label="1", x=10, y=0, z=-0.45)
-    point4 = gl.geometry.Point(label="2", x=10, y=0, z=1.5)
-    point5 = gl.geometry.Point(label="3", x=40, y=0, z=1.5)
-    point6 = gl.geometry.Point(label="4", x=40, y=0, z=-0.45)
+    point3 = gl.geometry.Point(label="1", x=10, y=0, z=ground_level)
+    point4 = gl.geometry.Point(label="2", x=10, y=0, z=ground_level + load_thickness)
+    point5 = gl.geometry.Point(label="3", x=40, y=0, z=ground_level + load_thickness)
+    point6 = gl.geometry.Point(label="4", x=40, y=0, z=ground_level)
     pointlist = [point3, point4, point5, point6]
     # Add first uniform load
     model.add_non_uniform_load(
         name="My First Load",
         points=pointlist,
         time_start=timedelta(days=0),
-        gamma_dry=18.0,
-        gamma_wet=20.0,
+        gamma_dry=load_value,
+        gamma_wet=load_value,
     )
 
-    input_test_file = Path("Example3.sli")
+    input_test_file = Path("Example4.sli")
     model.serialize(input_test_file)
 
     # Try execution approaches
@@ -111,13 +125,13 @@ def create_dsettlement_model(material_properties, const_model, consol_model):
     # sld_string = sld_bytes.decode('utf-8')
 
     # Save results to a local file (if running locally)
-    with open("Example3.sld", "w") as f:
-        f.write(sld_file.getvalue())   
+    # with open("Example3.sld", "w") as f:
+    #     f.write(sld_file.getvalue())   
 
     return sld_string
 
 
-def create_Dset_geometry(df_bh, groundlevel, material_table):
+def create_Dset_geometry(df_bh, ground_level, material_table):
         """
         Create geometry lists for geological layers including colors and names
         """
@@ -138,8 +152,8 @@ def create_Dset_geometry(df_bh, groundlevel, material_table):
         # Creating lists
         for index, row in df_bh.iterrows():
             mat = row['Description']
-            d_top = np.round(-row['Depth Top'] + groundlevel, 2)
-            d_base = np.round(-row['Depth Base'] + groundlevel, 2)
+            d_top = np.round(-row['Depth Top'] + ground_level, 2)
+            d_base = np.round(-row['Depth Base'] + ground_level, 2)
             thick = np.round(d_top - d_base, 2)  # Fixed parenthesis
             
             material.append(mat)
