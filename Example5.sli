@@ -2,7 +2,7 @@ INPUT FILE FOR D-SETTLEMENT
 ==============================================================================
 COMPANY    : 
 DATE       : 26-09-2025
-TIME       : 17:19:31
+TIME       : 17:30:46
 FILENAME   : 
 CREATED BY : GEOLib version 2.7.0
 ==========================    BEGINNING OF DATA     ==========================
@@ -1037,27 +1037,53 @@ SoilDefaultElasticity=1
 [END OF SOIL COLLECTION]
 [GEOMETRY DATA]
 [POINTS]
-  16  - Number of geometry points -
+  42  - Number of geometry points -
        1          0.000         -1.200       -999.000
        2         50.000         -1.200       -999.000
-       3          0.000        -20.000       -999.000
-       4         50.000        -20.000       -999.000
-       5          0.000         -8.750       -999.000
-       6         50.000         -8.750       -999.000
-       7          0.000         -8.000       -999.000
-       8         50.000         -8.000       -999.000
-       9          0.000         -3.750       -999.000
-      10         50.000         -3.750       -999.000
-      11          0.000         -3.000       -999.000
-      12         50.000         -3.000       -999.000
-      13          0.000         -1.500       -999.000
-      14         50.000         -1.500       -999.000
-      15          0.000          0.010       -999.000
-      16         50.000          0.010       -999.000
+       3          0.000        -25.030       -999.000
+       4         50.000        -25.030       -999.000
+       5          0.000        -22.510       -999.000
+       6         50.000        -22.510       -999.000
+       7          0.000        -21.750       -999.000
+       8         50.000        -21.750       -999.000
+       9          0.000        -20.830       -999.000
+      10         50.000        -20.830       -999.000
+      11          0.000        -20.360       -999.000
+      12         50.000        -20.360       -999.000
+      13          0.000        -19.710       -999.000
+      14         50.000        -19.710       -999.000
+      15          0.000        -19.330       -999.000
+      16         50.000        -19.330       -999.000
+      17          0.000        -18.810       -999.000
+      18         50.000        -18.810       -999.000
+      19          0.000        -18.460       -999.000
+      20         50.000        -18.460       -999.000
+      21          0.000        -16.300       -999.000
+      22         50.000        -16.300       -999.000
+      23          0.000        -14.200       -999.000
+      24         50.000        -14.200       -999.000
+      25          0.000        -13.750       -999.000
+      26         50.000        -13.750       -999.000
+      27          0.000         -9.530       -999.000
+      28         50.000         -9.530       -999.000
+      29          0.000         -8.670       -999.000
+      30         50.000         -8.670       -999.000
+      31          0.000         -3.490       -999.000
+      32         50.000         -3.490       -999.000
+      33          0.000         -3.010       -999.000
+      34         50.000         -3.010       -999.000
+      35          0.000         -2.650       -999.000
+      36         50.000         -2.650       -999.000
+      37          0.000         -2.250       -999.000
+      38         50.000         -2.250       -999.000
+      39          0.000         -1.230       -999.000
+      40         50.000         -1.230       -999.000
+      41          0.000          0.010       -999.000
+      42         50.000          0.010       -999.000
 [END OF POINTS]
 
 [CURVES]
-   8 - Number of curves -
+  21 - Number of curves -
      1 - Curve number
        2 - number of points on curve,  next line(s) are pointnumbers
          1     2
@@ -1082,10 +1108,49 @@ SoilDefaultElasticity=1
      8 - Curve number
        2 - number of points on curve,  next line(s) are pointnumbers
         15    16
+     9 - Curve number
+       2 - number of points on curve,  next line(s) are pointnumbers
+        17    18
+    10 - Curve number
+       2 - number of points on curve,  next line(s) are pointnumbers
+        19    20
+    11 - Curve number
+       2 - number of points on curve,  next line(s) are pointnumbers
+        21    22
+    12 - Curve number
+       2 - number of points on curve,  next line(s) are pointnumbers
+        23    24
+    13 - Curve number
+       2 - number of points on curve,  next line(s) are pointnumbers
+        25    26
+    14 - Curve number
+       2 - number of points on curve,  next line(s) are pointnumbers
+        27    28
+    15 - Curve number
+       2 - number of points on curve,  next line(s) are pointnumbers
+        29    30
+    16 - Curve number
+       2 - number of points on curve,  next line(s) are pointnumbers
+        31    32
+    17 - Curve number
+       2 - number of points on curve,  next line(s) are pointnumbers
+        33    34
+    18 - Curve number
+       2 - number of points on curve,  next line(s) are pointnumbers
+        35    36
+    19 - Curve number
+       2 - number of points on curve,  next line(s) are pointnumbers
+        37    38
+    20 - Curve number
+       2 - number of points on curve,  next line(s) are pointnumbers
+        39    40
+    21 - Curve number
+       2 - number of points on curve,  next line(s) are pointnumbers
+        41    42
 [END OF CURVES]
 
 [BOUNDARIES]
-  7 - Number of boundaries -
+ 20 - Number of boundaries -
     0 - Boundary number
       1 - number of curves on boundary, next line(s) are curvenumbers
         2
@@ -1107,10 +1172,62 @@ SoilDefaultElasticity=1
     6 - Boundary number
       1 - number of curves on boundary, next line(s) are curvenumbers
         8
+    7 - Boundary number
+      1 - number of curves on boundary, next line(s) are curvenumbers
+        9
+    8 - Boundary number
+      1 - number of curves on boundary, next line(s) are curvenumbers
+       10
+    9 - Boundary number
+      1 - number of curves on boundary, next line(s) are curvenumbers
+       11
+   10 - Boundary number
+      1 - number of curves on boundary, next line(s) are curvenumbers
+       12
+   11 - Boundary number
+      1 - number of curves on boundary, next line(s) are curvenumbers
+       13
+   12 - Boundary number
+      1 - number of curves on boundary, next line(s) are curvenumbers
+       14
+   13 - Boundary number
+      1 - number of curves on boundary, next line(s) are curvenumbers
+       15
+   14 - Boundary number
+      1 - number of curves on boundary, next line(s) are curvenumbers
+       16
+   15 - Boundary number
+      1 - number of curves on boundary, next line(s) are curvenumbers
+       17
+   16 - Boundary number
+      1 - number of curves on boundary, next line(s) are curvenumbers
+       18
+   17 - Boundary number
+      1 - number of curves on boundary, next line(s) are curvenumbers
+       19
+   18 - Boundary number
+      1 - number of curves on boundary, next line(s) are curvenumbers
+       20
+   19 - Boundary number
+      1 - number of curves on boundary, next line(s) are curvenumbers
+       21
 [END OF BOUNDARIES]
 
 [USE PROBABILISTIC DEFAULTS BOUNDARIES]
-  7 - Number of boundaries -
+ 20 - Number of boundaries -
+  1
+  1
+  1
+  1
+  1
+  1
+  1
+  1
+  1
+  1
+  1
+  1
+  1
   1
   1
   1
@@ -1121,7 +1238,20 @@ SoilDefaultElasticity=1
 [END OF USE PROBABILISTIC DEFAULTS BOUNDARIES]
 
 [STDV BOUNDARIES]
-  7 - Number of boundaries -
+ 20 - Number of boundaries -
+   0.0
+   0.0
+   0.0
+   0.0
+   0.0
+   0.0
+   0.0
+   0.0
+   0.0
+   0.0
+   0.0
+   0.0
+   0.0
    0.0
    0.0
    0.0
@@ -1132,7 +1262,20 @@ SoilDefaultElasticity=1
 [END OF STDV BOUNDARIES]
 
 [DISTRIBUTION BOUNDARIES]
-  7 - Number of boundaries -
+ 20 - Number of boundaries -
+  0
+  0
+  0
+  0
+  0
+  0
+  0
+  0
+  0
+  0
+  0
+  0
+  0
   0
   0
   0
@@ -1154,7 +1297,7 @@ SoilDefaultElasticity=1
 [END OF PHREATIC LINE]
 
 [LAYERS]
-  6 - Number of layers -
+  19 - Number of layers -
      1 - Layer number, next line is material of layer
          SAND
          1 - Piezometric level line at top of layer
@@ -1162,35 +1305,113 @@ SoilDefaultElasticity=1
          0 - Boundarynumber at top of layer
          1 - Boundarynumber at bottom of layer
      2 - Layer number, next line is material of layer
-         Peat
+         Silty CLAY
          1 - Piezometric level line at top of layer
          1 - Piezometric level line at bottom of layer
          1 - Boundarynumber at top of layer
          2 - Boundarynumber at bottom of layer
      3 - Layer number, next line is material of layer
-         Silty SAND
+         CLAY
          1 - Piezometric level line at top of layer
          1 - Piezometric level line at bottom of layer
          2 - Boundarynumber at top of layer
          3 - Boundarynumber at bottom of layer
      4 - Layer number, next line is material of layer
-         Organic CLAY
+         SAND
          1 - Piezometric level line at top of layer
          1 - Piezometric level line at bottom of layer
          3 - Boundarynumber at top of layer
          4 - Boundarynumber at bottom of layer
      5 - Layer number, next line is material of layer
-         Peat
+         Silty SAND
          1 - Piezometric level line at top of layer
          1 - Piezometric level line at bottom of layer
          4 - Boundarynumber at top of layer
          5 - Boundarynumber at bottom of layer
      6 - Layer number, next line is material of layer
-         Silty CLAY
+         SAND
          1 - Piezometric level line at top of layer
          1 - Piezometric level line at bottom of layer
          5 - Boundarynumber at top of layer
          6 - Boundarynumber at bottom of layer
+     7 - Layer number, next line is material of layer
+         Silty CLAY
+         1 - Piezometric level line at top of layer
+         1 - Piezometric level line at bottom of layer
+         6 - Boundarynumber at top of layer
+         7 - Boundarynumber at bottom of layer
+     8 - Layer number, next line is material of layer
+         CLAY
+         1 - Piezometric level line at top of layer
+         1 - Piezometric level line at bottom of layer
+         7 - Boundarynumber at top of layer
+         8 - Boundarynumber at bottom of layer
+     9 - Layer number, next line is material of layer
+         Silty CLAY
+         1 - Piezometric level line at top of layer
+         1 - Piezometric level line at bottom of layer
+         8 - Boundarynumber at top of layer
+         9 - Boundarynumber at bottom of layer
+    10 - Layer number, next line is material of layer
+         SAND
+         1 - Piezometric level line at top of layer
+         1 - Piezometric level line at bottom of layer
+         9 - Boundarynumber at top of layer
+        10 - Boundarynumber at bottom of layer
+    11 - Layer number, next line is material of layer
+         Silty SAND
+         1 - Piezometric level line at top of layer
+         1 - Piezometric level line at bottom of layer
+        10 - Boundarynumber at top of layer
+        11 - Boundarynumber at bottom of layer
+    12 - Layer number, next line is material of layer
+         SAND
+         1 - Piezometric level line at top of layer
+         1 - Piezometric level line at bottom of layer
+        11 - Boundarynumber at top of layer
+        12 - Boundarynumber at bottom of layer
+    13 - Layer number, next line is material of layer
+         Silty CLAY
+         1 - Piezometric level line at top of layer
+         1 - Piezometric level line at bottom of layer
+        12 - Boundarynumber at top of layer
+        13 - Boundarynumber at bottom of layer
+    14 - Layer number, next line is material of layer
+         SAND
+         1 - Piezometric level line at top of layer
+         1 - Piezometric level line at bottom of layer
+        13 - Boundarynumber at top of layer
+        14 - Boundarynumber at bottom of layer
+    15 - Layer number, next line is material of layer
+         Silty CLAY
+         1 - Piezometric level line at top of layer
+         1 - Piezometric level line at bottom of layer
+        14 - Boundarynumber at top of layer
+        15 - Boundarynumber at bottom of layer
+    16 - Layer number, next line is material of layer
+         Organic CLAY
+         1 - Piezometric level line at top of layer
+         1 - Piezometric level line at bottom of layer
+        15 - Boundarynumber at top of layer
+        16 - Boundarynumber at bottom of layer
+    17 - Layer number, next line is material of layer
+         Silty CLAY
+         1 - Piezometric level line at top of layer
+         1 - Piezometric level line at bottom of layer
+        16 - Boundarynumber at top of layer
+        17 - Boundarynumber at bottom of layer
+    18 - Layer number, next line is material of layer
+         Silty SAND
+         1 - Piezometric level line at top of layer
+         1 - Piezometric level line at bottom of layer
+        17 - Boundarynumber at top of layer
+        18 - Boundarynumber at bottom of layer
+    19 - Layer number, next line is material of layer
+         Peat
+         1 - Piezometric level line at top of layer
+         1 - Piezometric level line at bottom of layer
+        18 - Boundarynumber at top of layer
+        19 - Boundarynumber at bottom of layer
 [END OF LAYERS]
 
 [END OF GEOMETRY DATA]

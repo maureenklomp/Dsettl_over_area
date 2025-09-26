@@ -6,7 +6,7 @@ import geolib as gl
 from pathlib import Path
 from datetime import timedelta
 
-def create_dsettlement_model(material_properties, const_model, consol_model, GWT, load_value, load_thickness, ground_level):
+def create_dsettlement_model(material_properties, const_model, consol_model, GWT, load_value, load_thickness, ground_level, levels, layer_names):
     
     # Catching input errors
     violations = []
@@ -34,7 +34,7 @@ def create_dsettlement_model(material_properties, const_model, consol_model, GWT
                     is_secondary_swelling=False)
     
     # Create soil types
-    material_layers = ["SAND", "Peat", "Silty SAND", "Organic CLAY", "Peat", "Silty CLAY"]
+    # material_layers = ["SAND", "Peat", "Silty SAND", "Organic CLAY", "Peat", "Silty CLAY"]
 
     materials = materials_to_dict(material_properties)
     material_names = list(materials.keys())
@@ -71,20 +71,20 @@ def create_dsettlement_model(material_properties, const_model, consol_model, GWT
     hl = model.add_head_line([p1, p2], is_phreatic=True)
 
     # Boundary lines
-    layers = [-20.0, -8.75, -8.0, -3.75, -3.0, -1.5, ground_level]
+    # layers = [-20.0, -8.75, -8.0, -3.75, -3.0, -1.5, ground_level]
 
     p_left = []
     p_right = []
 
     boundary_lines = []
 
-    for i in range(len(layers)):
-        p_left.append(gl.geometry.Point(x=0, z=layers[i]))
-        p_right.append(gl.geometry.Point(x=50, z=layers[i]))
+    for i in range(len(levels)):
+        p_left.append(gl.geometry.Point(x=0, z=levels[i]))
+        p_right.append(gl.geometry.Point(x=50, z=levels[i]))
         boundary_lines.append(model.add_boundary([p_left[i], p_right[i]]))
     
-    for j in range(len(material_layers)):
-        model.add_layer(boundary_top=boundary_lines[j], boundary_bottom=boundary_lines[j + 1], material_name= material_layers[j], head_line_top=hl, head_line_bottom=hl)
+    for j in range(len(layer_names)):
+        model.add_layer(boundary_top=boundary_lines[j], boundary_bottom=boundary_lines[j + 1], material_name= layer_names[j], head_line_top=hl, head_line_bottom=hl)
 
     # Create vertical
     p0 = gl.geometry.Point(x=25, z=0)
@@ -106,7 +106,7 @@ def create_dsettlement_model(material_properties, const_model, consol_model, GWT
         gamma_wet=load_value,
     )
 
-    input_test_file = Path("Example4.sli")
+    input_test_file = Path("Example5.sli")
     model.serialize(input_test_file)
 
     # Try execution approaches
@@ -149,12 +149,14 @@ def create_Dset_geometry(df_bh, ground_level, material_table):
              material_color = row['col_4']
              material_colors[material_name] = material_color
         
+        df_bh_sorted = df_bh.sort_values(by='Depth Top')
+
         # Creating lists
-        for index, row in df_bh.iterrows():
+        for index, row in df_bh_sorted.iterrows():
             mat = row['Description']
-            d_top = np.round(-row['Depth Top'] + ground_level, 2)
-            d_base = np.round(-row['Depth Base'] + ground_level, 2)
-            thick = np.round(d_top - d_base, 2)  # Fixed parenthesis
+            d_top = round(-row['Depth Top'] + ground_level, 2)
+            d_base = round(-row['Depth Base'] + ground_level, 2)
+            thick = round(d_top - d_base, 2)  # Fixed parenthesis
             
             material.append(mat)
             depth_top.append(d_top)

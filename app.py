@@ -161,9 +161,12 @@ class Controller(vkt.Controller):
         months = params.page_2.number_field_2
         time_in_days = months * 30 # Approximate conversion from months to days
 
+        levels = [-25.03, -22.51, -21.75, -20.83, -20.36, -19.71, -19.33, -18.81, -18.46, -16.3, -14.2, -13.75, -9.53, -8.67, -3.49, -3.01, -2.65, -2.25, -1.23, 0.01]
+        layer_names = ['Peat', 'Silty SAND', 'Silty CLAY', 'Organic CLAY', 'Silty CLAY', 'SAND', 'Silty CLAY', 'SAND', 'Silty SAND', 'SAND', 'Silty CLAY', 'CLAY', 'Silty CLAY', 'SAND', 'Silty SAND', 'SAND', 'CLAY', 'Silty CLAY', 'SAND']
+
         # Create and run model
         ground_level = -0.45
-        d = self.create_Dsettl_model(params, ground_level)
+        d = self.create_Dsettl_model(params, ground_level, levels, layer_names)
         result_dict = extract_iteration_results_dset(d, time=time_in_days)
         name = "2_006"
 
@@ -192,16 +195,22 @@ class Controller(vkt.Controller):
         ground_level = find_ground_level(df_loc, location_id)
         filtered_df_bh = find_filtered_df_bh(df_loc, df_bh, location_id)
 
-        # print(ground_level)
+        print(ground_level)
 
-        # if not filtered_df_bh.empty:
-        #     materials, depth_tops, depth_bases, colors, names, thicknesses = create_Dset_geometry(filtered_df_bh, ground_level, material_table)
+        if not filtered_df_bh.empty:
+            materials, depth_tops, depth_bases, colors, names, thicknesses = create_Dset_geometry(filtered_df_bh, ground_level, material_table)
         
-        # print(depth_bases)
-        # print(names)
+        depth_base_array = np.array(depth_bases)
+        reversed_array = depth_base_array[::-1].tolist()
+
+        names_array = np.array(names)
+        layer_names = names_array[::-1].tolist()
+        
+        # Ensure ground_level is added to each element
+        levels = reversed_array + [float(ground_level)]
 
         time_in_days = np.logspace(0.1, 4, 20)
-        d = self.create_Dsettl_model(params, ground_level)
+        d = self.create_Dsettl_model(params, ground_level, levels, layer_names)
 
         settlements = []
         for t in time_in_days:
@@ -210,13 +219,10 @@ class Controller(vkt.Controller):
         
         fig = create_settl_graphs(d, log)
 
-        # fig = go.Figure()
-        # fig.add_trace(go.Scatter(x=time_in_days, y=settlements, mode='lines+markers', name='Settlement over time'))
-        # fig.update_layout(title='Settlement over time', xaxis_title='Time (days)', yaxis_title='Settlement (m)')
         return vkt.PlotlyResult(fig)  # Changed from: return fig
         
 
-    def create_Dsettl_model(self, params, ground_level):
+    def create_Dsettl_model(self, params, ground_level, levels, layer_names):
         # Create the model with misc. options.
         material_properties = params.page_1.tab_1.section_2.table_1
         const_model = model_types[params.page_1.tab_1.section_1.autocomplete_field_1]
@@ -227,7 +233,7 @@ class Controller(vkt.Controller):
         load_value = params.page_1.tab_5.section_1.number_field_1
         load_thickness = params.page_1.tab_5.section_1.number_field_2
 
-        result = create_dsettlement_model(material_properties, const_model, consol_model, GWT, load_value, load_thickness, ground_level)
+        result = create_dsettlement_model(material_properties, const_model, consol_model, GWT, load_value, load_thickness, ground_level, levels, layer_names)
 
         return result
 
