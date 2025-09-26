@@ -1,6 +1,116 @@
 import numpy as np
 import viktor as vkt
 from src.Dsettl_results import extract_iteration_results_dset
+from src.Helper import materials_to_dict
+import geolib as gl
+from pathlib import Path
+from datetime import timedelta
+
+def create_dsettlement_model(material_properties, const_model, consol_model):
+    
+    model = gl.DSettlementModel()
+    model.set_model(constitutive_model= const_model,
+                    consolidation_model= consol_model,
+                    is_two_dimensional=True,
+                    strain_type= gl.models.dsettlement.internal.StrainType.LINEAR,
+                    is_vertical_drain=False,
+                    is_fit_for_settlement_plate=False,
+                    is_probabilistic=False,
+                    is_horizontal_displacements=False,
+                    is_secondary_swelling=False)
+    
+    # Create soil types
+    material_layers = ["SAND", "Peat", "Silty SAND", "Organic CLAY", "Peat", "Silty CLAY"]
+
+    materials = materials_to_dict(material_properties)
+    material_names = list(materials.keys())
+
+    s = {}
+    for material_name in material_names:
+        if material_name in materials:
+            props = materials[material_name]
+
+            # Create soil type with specified properties
+            s = gl.soils.Soil(name=material_name)
+            s.soil_weight_parameters.saturated_weight.mean = props['sat_weight']  # kN/m³
+            s.soil_weight_parameters.unsaturated_weight.mean = props['unsat_weight']  # kN/m³
+            
+            s.is_drained = props['is_drained']
+            if not s.is_drained:
+                s.storage_parameters.storage_type = 0
+                s.storage_parameters.vertical_consolidation_coefficient.mean = props['cv'] # m²/s
+
+            s.isotache_parameters.precon_isotache_type = gl.soils.StateType.POP
+            s.soil_state.pop_layer.mean = props['pop_layer']  # kN/m2
+
+            s.bjerrum_parameters.compression_ratio_CR.mean = props['cr']  # kN/m2
+            s.bjerrum_parameters.reloading_swelling_RR.mean = props['rr']  # kN/m2
+            s.bjerrum_parameters.coef_secondary_compression_Ca.mean = props['ca']  # kN/m2
+
+            model.add_soil(s)
+        else:
+            raise ValueError(f"Material '{material_name}' not found in provided material properties table.")
+    
+    # Headline lines
+    p1 = gl.geometry.Point(x=0, z=-1)
+    p2 = gl.geometry.Point(x=50, z=-1)
+    hl = model.add_head_line([p1, p2], is_phreatic=True)
+
+    # Boundary lines
+    layers = [-20.0, -8.75, -8.0, -3.75, -3.0, -1.5, -0.45]
+
+    p_left = []
+    p_right = []
+
+    boundary_lines = []
+
+    for i in range(len(layers)):
+        p_left.append(gl.geometry.Point(x=0, z=layers[i]))
+        p_right.append(gl.geometry.Point(x=50, z=layers[i]))
+        boundary_lines.append(model.add_boundary([p_left[i], p_right[i]]))
+    
+    for j in range(len(material_layers)):
+        model.add_layer(boundary_top=boundary_lines[j], boundary_bottom=boundary_lines[j + 1], material_name= material_layers[j], head_line_top=hl, head_line_bottom=hl)
+
+    # Create vertical
+    p0 = gl.geometry.Point(x=25, z=0)
+    model.set_verticals([p0])
+
+    # Add uniform load
+    # set up the point list
+    point3 = gl.geometry.Point(label="1", x=10, y=0, z=-0.45)
+    point4 = gl.geometry.Point(label="2", x=10, y=0, z=1.5)
+    point5 = gl.geometry.Point(label="3", x=40, y=0, z=1.5)
+    point6 = gl.geometry.Point(label="4", x=40, y=0, z=-0.45)
+    pointlist = [point3, point4, point5, point6]
+    # Add first uniform load
+    model.add_non_uniform_load(
+        name="My First Load",
+        points=pointlist,
+        time_start=timedelta(days=0),
+        gamma_dry=18.0,
+        gamma_wet=20.0,
+    )
+
+    input_test_file = Path("Example3.sli")
+    model.serialize(input_test_file)
+
+    # Try execution approaches
+    file = vkt.File()
+    path = Path(file.source)
+    model.serialize(path)
+    
+    dsettlementanalysis = vkt.dsettlement.DSettlementAnalysis(input_file=file)
+    dsettlementanalysis.execute()
+   
+    # Obtain the result file.
+    sld_file = dsettlementanalysis.get_sld_file()
+
+    # Save results to a local file (if running locally)
+    with open("Example3.sld", "w") as f:
+        f.write(sld_file.getvalue())   
+
+    return sld_file.getvalue()
 
 
 def create_Dset_geometry(df_bh, groundlevel, material_table):
@@ -36,77 +146,3 @@ def create_Dset_geometry(df_bh, groundlevel, material_table):
             name.append(mat)
         
         return material, depth_top, depth_base, color, name, thickness
-
-
-
-def create_Dset_model(model_type, consol_type, location, df_loc, df_bh, material_table, coord_system, load):
-    if df_loc is not None:
-        # Get location data
-        selected_location = df_loc[df_loc['Location ID'] == location]
-
-    if (df_bh is not None and location is not None):
-        # Get the filtered borehole data
-        filtered_df_bh = df_bh[df_bh['Location ID'] == location]
-        groundlevel = selected_location['Ground Level'].iloc[0]
-
-    if not filtered_df_bh.empty:
-            # Use create_geometry function to get all lists
-            materials, depth_tops, depth_bases, colors, names, thicknesses = create_Dset_geometry(filtered_df_bh, groundlevel)
-
-    # Create model
-    model_dset = vkt.dsettlement.Model1D(model_type, consol_type)
-
-    # Create material(s) - Fixed to handle table data properly
-    for row in material_table:
-        model_dset.create_material(
-            row['col_1'],  # Material name
-            row['col_2'],  # Volume weight unsat
-            row['col_3'],  # Volume weight sat
-            vkt.Color(row['col_4']),  # Color (now already a Color object from ColorField)
-            rr=row['col_5'],  # RR
-            cr=row['col_6'],  # CR
-            ca=row['col_7']   # Ca
-        )
-
-    # Create geometry - layers
-    # Fixed: Use min() to find minimum value
-    bottom_level = min(depth_bases) - 10  # 10m below deepest layer
-
-    layer_tuples = []
-    for i in range(len(names)):
-        layer_tuples.append((depth_tops[i], names[i]))
-
-    print(layer_tuples)
-
-    # Update geometry in model
-    # Bottom of the model is 2m below the lowest layer
-    model_dset.update_geometry(np.min(depth_bases)-2, layer_tuples)
-
-    # Create load(s)
-    model_dset.create_uniform_load("Uniform load", time = 0, unit_weight = load, height=1.0, y_application=groundlevel)
-
-    # Generate the input file for the model as if it was generated by D-Settlement.
-    # Metadata can be used (not required) to update data such as created_by, titles, etc.
-    metadata = vkt.dsettlement.Metadata(title_1='Settlement Model', created_by='Maureen Danique Klomp')
-    input_file = model_dset.generate_input_file(metadata)
-
-    # Run the analysis with the generated input file (requires worker).
-    analysis = vkt.dsettlement.DSettlementAnalysis(input_file)
-    analysis.execute(300)
-
-    # Obtain the result file.
-    sld_file = analysis.get_sld_file()
-
-    # Save to a local file (if running locally)
-    # with open("dsettl_results.fod", "wb") as f:
-    #     f.write(sld_file.getvalue())
-
-    # Read the raw content
-    sld_bytes = sld_file.getvalue()
-    sld_string = sld_bytes.decode('utf-8')
-
-    # TODO Create own parser for settlement results
-    # result = extract_iteration_results_dset(sld_string)
-
-    return sld_string
-    # return result

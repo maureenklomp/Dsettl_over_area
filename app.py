@@ -7,8 +7,8 @@ from viktor.views import PlotlyView, PlotlyResult
 import pandas as pd
 import numpy as np
 from src.Helper import create_df
-from src.Defaults import create_default_mat_prop, create_dsettlement_model
-from src.Dsettl import create_Dset_geometry, create_Dset_model
+from src.Defaults import create_default_mat_prop
+from src.Dsettl import create_Dset_geometry, create_dsettlement_model
 from src.Visualizations import create_geo_profile_and_map, create_heatmap
 from io import BytesIO, StringIO
 import geolib as gl

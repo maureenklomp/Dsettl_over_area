@@ -15,10 +15,12 @@ def rd_to_wgs84(x_rd, y_rd):
         lon, lat = transformer.transform(x_rd, y_rd)
         return lat, lon
 
+
 def create_df(file_field):
         binary = file_field.file.getvalue_binary()
         df = pd.read_csv(BytesIO(binary))
         return df
+
 
 def create_list_of_points(df):
     points = []
@@ -26,6 +28,7 @@ def create_list_of_points(df):
         x, y = rd_to_wgs84(row['Easting'], row['Northing'])
         points.append((x, y))
     return points
+
 
 def calculate_zoom_level(lats, lons, padding=0.1):
     """
@@ -58,7 +61,8 @@ def calculate_zoom_level(lats, lons, padding=0.1):
         return 12
     else:
         return 13
-    
+
+
 def convert_color_string_to_tuple(color_string):
     """Convert color string like "255, 255, 0" to tuple (255, 255, 0)"""
     # Split the string by comma and convert each part to integer
@@ -66,6 +70,32 @@ def convert_color_string_to_tuple(color_string):
     color_tuple = tuple(int(part.strip()) for part in color_parts)
     return color_tuple
 
+
+def materials_to_dict(material_props):
+    """
+    Convert the material properties from Viktor input format into a dictionary of dictionaries
+    suitable for geolib material creation
+    """
+
+    material_properties = {}
+    for prop in material_props:
+        material_name = prop['col_1']
+
+        # Determine if material is drained (sand types are typically drained)
+        is_drained = ('SAND' in material_name or 'Sand' in material_name)
+
+        material_properties[material_name] = {
+            "sat_weight": prop['col_3'],        # y_sat from col_3
+            "unsat_weight": prop['col_2'],      # y_dry from col_2
+            "cv": prop['col_8'],                # vertical consolidation coefficient
+            "cr": prop['col_6'],                # compression ratio CR from col_6
+            "rr": prop['col_5'],                # reloading ratio RR from col_5
+            "ca": prop['col_7'],                # secondary compression Ca from col_7
+            "is_drained": is_drained,           # determined based on material type
+            "pop_layer": prop['col_9'],         # POP from col_9
+        }
+
+    return material_properties
 
 
 
