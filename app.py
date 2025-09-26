@@ -9,6 +9,7 @@ import numpy as np
 from src.Helper import create_df
 from src.Defaults import create_default_mat_prop
 from src.Dsettl import create_Dset_geometry, create_dsettlement_model
+from src.Dsettl_results import extract_iteration_results_dset
 from src.Visualizations import create_geo_profile_and_map, create_heatmap
 from io import BytesIO, StringIO
 import geolib as gl
@@ -182,13 +183,18 @@ class Controller(vkt.Controller):
     def plot_settl_results(self, params, **kwargs):
         # d = self.create_Dfound_model(params)
         d = self.create_Dsettl_model(params)
+        # result = extract_iteration_results_dset(d, time=10000)
+        result_dict = extract_iteration_results_dset(d, time=10000)  # Example time in days
+        
+        # Create DataFrame with dictionary keys as column names
+        result = pd.DataFrame([result_dict])  # Pass as list to create one row with keys as columns
     
         # TableView can handle DataFrames directly
-        if isinstance(d, pd.DataFrame):
-            return vkt.TableResult(d)
+        if isinstance(result, pd.DataFrame):
+            return vkt.TableResult(result)
         else:
             # If not a DataFrame, create a simple DataFrame to display
-            df = pd.DataFrame({'Result': [str(d)]})
+            df = pd.DataFrame({'Result': [str(result)]})
             return vkt.TableResult(df)
         
         

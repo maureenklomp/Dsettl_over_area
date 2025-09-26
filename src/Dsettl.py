@@ -106,11 +106,15 @@ def create_dsettlement_model(material_properties, const_model, consol_model):
     # Obtain the result file.
     sld_file = dsettlementanalysis.get_sld_file()
 
+    # Read the raw content
+    sld_string = sld_file.getvalue()
+    # sld_string = sld_bytes.decode('utf-8')
+
     # Save results to a local file (if running locally)
     with open("Example3.sld", "w") as f:
         f.write(sld_file.getvalue())   
 
-    return sld_file.getvalue()
+    return sld_string
 
 
 def create_Dset_geometry(df_bh, groundlevel, material_table):
