@@ -104,9 +104,18 @@ def find_ground_level(df_loc, location_id):
     Returns ground level for that location.
     """
     if (location_id is not None and df_loc is not None and not df_loc.empty):
-        groundlevel = df_loc['Ground Level'].iloc[0]
-
-        return groundlevel
+        # Filter dataframe by location_id first, then get ground level
+        filtered_df = df_loc[df_loc['Location ID'] == location_id]
+        
+        if not filtered_df.empty:
+            ground_level = filtered_df['Ground Level'].iloc[0]
+            return ground_level
+        else:
+            # Handle case where location_id is not found
+            print(f"Warning: Location ID '{location_id}' not found in locations dataframe")
+            return None
+    
+    return None
 
 
 def find_filtered_df_bh(df_loc, df_bh, location_id):

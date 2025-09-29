@@ -1,4 +1,3 @@
-from io import BytesIO
 from tkinter.font import names
 import viktor as vkt
 import plotly.graph_objects as go
@@ -6,13 +5,17 @@ from plotly.subplots import make_subplots
 from viktor.views import PlotlyView, PlotlyResult
 import pandas as pd
 import numpy as np
+
 from src.Helper import create_df, find_ground_level, find_filtered_df_bh
 from src.Defaults import create_default_mat_prop
-from src.Dsettl import create_Dset_geometry, create_dsettlement_model
+from src.Dsettl import create_Dset_geometry, create_dsettlement_model, get_layers
 from src.Dsettl_results import extract_iteration_results_dset
 from src.Visualizations import create_geo_profile_and_map, create_heatmap, create_settl_graphs
+from src.ASCII import get_train
+
 from io import BytesIO, StringIO
 import geolib as gl
+from datetime import timedelta
 
 model_types = {'NEN_BJERRUM': gl.models.dsettlement.internal.SoilModel.NEN_BJERRUM, 'NEN_KOPPEJAN': gl.models.dsettlement.internal.SoilModel.NEN_KOPPEJAN, 'ISOTACHE': gl.models.dsettlement.internal.SoilModel.ISOTACHE}
 cons_model_types = {"DARCY": gl.models.dsettlement.internal.ConsolidationModel.DARCY, "TERZAGHI": gl.models.dsettlement.internal.ConsolidationModel.TERZAGHI}
@@ -38,8 +41,7 @@ _filter_list_vis = vkt.And(vkt.IsNotNone(vkt.Lookup('page_1.tab_2.file_field_1')
 
 
 class Parametrization(vkt.Parametrization):
-    page_1 = vkt.Page("Inputs and checking", views=["show_locations_csv", "show_borehole_csv", "get_combined_geo_profile_and_map"], width=30)
-    
+    page_1 = vkt.Page("Inputs and checking", views=["show_locations_csv"], width=50)
     
     # Model Properties tab
     page_1.tab_1 = vkt.Tab("Model properties", description="What are the modelling properties for this project?")
@@ -71,7 +73,7 @@ class Parametrization(vkt.Parametrization):
     # Borehole tab
     page_1.tab_3 = vkt.Tab("Borehole data")
     page_1.tab_3.file_field_1 = vkt.FileField("Field Geological Descriptions", flex=100, file_types=[".csv"])
-    page_1.tab_3.option_field_1 = vkt.OptionField("Location ID for preview", options=get_location_filter_list, visible=_filter_list_vis)
+    # page_1.tab_3.option_field_1 = vkt.OptionField("Location ID for preview", options=get_location_filter_list, visible=_filter_list_vis)
     
 
     # Geometry tab
@@ -85,17 +87,16 @@ class Parametrization(vkt.Parametrization):
     page_1.tab_5.section_1.number_field_2 = vkt.NumberField("Thickness", flex=100, suffix="m", min=0)
     
 
-    page_2 = vkt.Page("ALL Settlement results", views=["plot_settl_results"], width=20)
-    page_2.number_field_2 = vkt.NumberField("Settlement at ... months:", default=6, min=0, max=24, step=1, variant="slider", flex=100)
-    
-    page_3 = vkt.Page("Settlement over time", views=["plot_settl_graph"], width=20)
-    page_3.boolean_field_1 = vkt.BooleanField("Logarithmic time axis", default=True, flex=100)
-    page_3.option_field_1 = page_1.tab_3.option_field_1
 
-    page_4 = vkt.Page("Heatmap", views=["plot_heatmap"], width=20)
-    page_4.number_field_1 = page_2.number_field_2
-    page_4.number_field_2 = vkt.NumberField("Adjust the point size on the heatmap", default=50, min=0, max=200, step=10, variant="slider", flex=100)
-    page_4.is_true = vkt.BooleanField("Show annotations on heatmap", default=True, flex=100)
+    page_2 = vkt.Page("Results per location", views=["show_borehole_csv", "get_combined_geo_profile_and_map", "plot_settl_graph"], width=20)
+    page_2.boolean_field_1 = vkt.BooleanField("Logarithmic time axis", default=True, flex=100)
+    page_2.option_field_1 = vkt.OptionField("Location ID for preview", options=get_location_filter_list, visible=_filter_list_vis)
+
+
+    page_3 = vkt.Page("Results for ALL locations", views=["plot_settl_results","plot_heatmap"], width=20)
+    page_3.number_field_1 = vkt.NumberField("Settlement at ... months:", default=6, min=0, max=24, step=1, variant="slider", flex=100)
+    page_3.number_field_2 = vkt.NumberField("Adjust the point size on the heatmap", default=50, min=0, max=200, step=10, variant="slider", flex=100)
+    page_3.is_true = vkt.BooleanField("Show annotations on heatmap", default=True, flex=100)
 
 
 class Controller(vkt.Controller):
@@ -135,13 +136,16 @@ class Controller(vkt.Controller):
         return vkt.TableResult(df_loc)
     
 
+
+    # RESULTS PER INDIVIDUAL LOCATION
+    # This shows the location and location-specific borehole data
     @vkt.TableView("Borehole Data", duration_guess=1)
     def show_borehole_csv(self, params, **kwargs):
         # Create dataframes for locations and boreholes
         df_loc, df_bh = self.input_csvs(params)
 
-        if params.page_1.tab_3.option_field_1:
-            filtered_df_bh = df_bh[df_bh['Location ID'] == params.page_1.tab_3.option_field_1]
+        if params.page_2.option_field_1:
+            filtered_df_bh = df_bh[df_bh['Location ID'] == params.page_2.option_field_1]
             # Define desired columns and check which ones exist
             desired_columns = ["Location ID", "Depth Top", "Depth Base", "Description", "Geology Code Arup"]
             available_columns = [col for col in desired_columns if col in filtered_df_bh.columns]
@@ -155,33 +159,7 @@ class Controller(vkt.Controller):
         return vkt.TableResult(filtered_df_bh)
     
 
-    @vkt.TableView('ALL Settlement results', duration_guess=1)
-    def plot_settl_results(self, params, **kwargs):
-        # Define time in days:
-        months = params.page_2.number_field_2
-        time_in_days = months * 30 # Approximate conversion from months to days
-
-        levels = [-25.03, -22.51, -21.75, -20.83, -20.36, -19.71, -19.33, -18.81, -18.46, -16.3, -14.2, -13.75, -9.53, -8.67, -3.49, -3.01, -2.65, -2.25, -1.23, 0.01]
-        layer_names = ['Peat', 'Silty SAND', 'Silty CLAY', 'Organic CLAY', 'Silty CLAY', 'SAND', 'Silty CLAY', 'SAND', 'Silty SAND', 'SAND', 'Silty CLAY', 'CLAY', 'Silty CLAY', 'SAND', 'Silty SAND', 'SAND', 'CLAY', 'Silty CLAY', 'SAND']
-
-        # Create and run model
-        ground_level = -0.45
-        d = self.create_Dsettl_model(params, ground_level, levels, layer_names)
-        result_dict = extract_iteration_results_dset(d, time=time_in_days)
-        name = "2_006"
-
-        # Create DataFrame with dictionary keys as column names
-        result = pd.DataFrame([result_dict], index = [name])  # Pass as list to create one row with keys as columns
-    
-        # TableView can handle DataFrames directly
-        if isinstance(result, pd.DataFrame):
-            return vkt.TableResult(result)
-        else:
-            # If not a DataFrame, create a simple DataFrame to display
-            df = pd.DataFrame({'Result': [str(result)]})
-            return vkt.TableResult(df)
-    
-
+    # This shows the settlement graph for a selected location
     @vkt.PlotlyView('Settlement over time', duration_guess=1)
     def plot_settl_graph(self, params, **kwargs):
         # Create dataframes for locations and boreholes
@@ -189,28 +167,17 @@ class Controller(vkt.Controller):
 
         material_table = params.page_1.tab_1.section_2.table_1
         
-        location_id = params.page_1.tab_3.option_field_1
-        log = params.page_3.boolean_field_1
+        location_id = params.page_2.option_field_1
+        log = params.page_2.boolean_field_1
 
         ground_level = find_ground_level(df_loc, location_id)
         filtered_df_bh = find_filtered_df_bh(df_loc, df_bh, location_id)
 
-        print(ground_level)
-
         if not filtered_df_bh.empty:
-            materials, depth_tops, depth_bases, colors, names, thicknesses = create_Dset_geometry(filtered_df_bh, ground_level, material_table)
-        
-        depth_base_array = np.array(depth_bases)
-        reversed_array = depth_base_array[::-1].tolist()
-
-        names_array = np.array(names)
-        layer_names = names_array[::-1].tolist()
-        
-        # Ensure ground_level is added to each element
-        levels = reversed_array + [float(ground_level)]
+            levels, layer_names = get_layers(filtered_df_bh, ground_level, material_table)
 
         time_in_days = np.logspace(0.1, 4, 20)
-        d = self.create_Dsettl_model(params, ground_level, levels, layer_names)
+        d = self.create_Dsettl_model(params, ground_level, levels, layer_names, location_id)
 
         settlements = []
         for t in time_in_days:
@@ -222,7 +189,7 @@ class Controller(vkt.Controller):
         return vkt.PlotlyResult(fig)  # Changed from: return fig
         
 
-    def create_Dsettl_model(self, params, ground_level, levels, layer_names):
+    def create_Dsettl_model(self, params, ground_level, levels, layer_names, location_id):
         # Create the model with misc. options.
         material_properties = params.page_1.tab_1.section_2.table_1
         const_model = model_types[params.page_1.tab_1.section_1.autocomplete_field_1]
@@ -233,7 +200,7 @@ class Controller(vkt.Controller):
         load_value = params.page_1.tab_5.section_1.number_field_1
         load_thickness = params.page_1.tab_5.section_1.number_field_2
 
-        result = create_dsettlement_model(material_properties, const_model, consol_model, GWT, load_value, load_thickness, ground_level, levels, layer_names)
+        result = create_dsettlement_model(material_properties, const_model, consol_model, GWT, load_value, load_thickness, ground_level, levels, layer_names, location_id)
 
         return result
 
@@ -244,7 +211,7 @@ class Controller(vkt.Controller):
         df_loc, df_bh = self.input_csvs(params)
         
         #select parameters from input
-        Location_id = params.page_1.tab_3.option_field_1
+        Location_id = params.page_2.option_field_1
         coord_system = params.page_1.tab_2.option_field_1
         material_table = params.page_1.tab_1.section_2.table_1
 
@@ -253,19 +220,126 @@ class Controller(vkt.Controller):
         return vkt.PlotlyResult(fig)
     
 
+    # ALL LOCATIONS
+    # This shows a table of the settlement results at a certain time for all locations
+    @vkt.TableView('ALL Settlement results', duration_guess=10)
+    def plot_settl_results(self, params, **kwargs):
+        # Create dataframes for locations and boreholes
+        df_loc, df_bh = self.input_csvs(params)
+        # Material table
+        material_table = params.page_1.tab_1.section_2.table_1
+        
+        # Define time in days:
+        time_in_days = params.page_3.number_field_1 * 30 # Approximate conversion from months to days
+
+        # Get all location IDs (including those without borehole data)
+        valid_location_ids = [loc_id for loc_id in df_loc['Location ID'].unique() if loc_id != '' and pd.notna(loc_id)]
+        total_calculations = len(valid_location_ids)
+
+        print(f"Total locations to process: {total_calculations}")
+        print(f"Location IDs: {valid_location_ids}")
+
+        # Initialize list to collect all results
+        all_results = []
+
+        # Calculate settlements for all locations
+        for i, location_id in enumerate(valid_location_ids):
+            # Progress message
+            moving_train = get_train(i)
+            percentage = int((i / total_calculations) * 100)
+
+            message = f"Processing location {i + 1}/{total_calculations}: {location_id}"
+            message = message + "  \n  \n" + moving_train
+
+            vkt.progress_message(
+                message=message,
+                percentage=percentage
+            )
+
+            print(f"Processing location {i + 1}: {location_id}")
+
+            try:
+                # For every location, get the required data
+                ground_level = find_ground_level(df_loc, location_id)
+                filtered_df_bh = find_filtered_df_bh(df_loc, df_bh, location_id)
+                
+                print(f"Ground level for {location_id}: {ground_level}")
+                print(f"Borehole data empty: {filtered_df_bh.empty}")
+                
+                if not filtered_df_bh.empty:
+                    levels, layer_names = get_layers(filtered_df_bh, ground_level, material_table)
+
+                    # Create and run model
+                    d = self.create_Dsettl_model(params, ground_level, levels, layer_names, location_id)
+                    result_dict = extract_iteration_results_dset(d, time=time_in_days)
+                    
+                    # Add location ID to the result dictionary
+                    result_dict['Location_ID'] = location_id
+                    
+                    print(f"Result for {location_id}: {result_dict}")
+                    
+                    # Collect the result
+                    all_results.append(result_dict)
+                else:
+                    # Handle case where no borehole data exists - ALWAYS add result
+                    print(f"No borehole data for {location_id}")
+                    result_dict = {
+                        'Location_ID': location_id,
+                        'settlement': 'No borehole data',
+                        'effective_vertical_stress': 'No borehole data',
+                        'time_found': 'No borehole data'
+                    }
+                    all_results.append(result_dict)
+                    
+            except Exception as e:
+                # Handle any errors during processing - ALWAYS add result
+                print(f"Error processing {location_id}: {str(e)}")
+                result_dict = {
+                    'Location_ID': location_id,
+                    'settlement': f'Error: {str(e)[:50]}',  # Truncate long error messages
+                    'effective_vertical_stress': 'Error',
+                    'time_found': 'Error'
+                }
+                all_results.append(result_dict)
+        
+        print(f"Total results collected: {len(all_results)}")
+        print(f"All results: {all_results}")
+        
+        # Create final DataFrame with all results
+        if all_results:
+            result = pd.DataFrame(all_results)
+            # Set Location_ID as index if desired
+            result = result.set_index('Location_ID')
+            print(f"Final DataFrame shape: {result.shape}")
+            print(f"Final DataFrame:\n{result}")
+        else:
+            result = pd.DataFrame({'Message': ['No valid locations found']})
+    
+        return vkt.TableResult(result)
+    
+
     @vkt.ImageView("Heatmap")
     def plot_heatmap(self, params, **kwargs):
         # Create dataframes for locations and boreholes
         df_loc, df_bh = self.input_csvs(params)
 
-        point_size = params.page_4.number_field_2
-        toggle_annotations = params.page_4.is_true
+        df_settl_results = self.plot_settl_results(params)
 
-        time = params.page_4.number_field_1 * 30        # Convert months to days
+         # Define point size and annotation toggle
+        point_size = params.page_3.number_field_2
+        toggle_annotations = params.page_3.is_true
 
-        if not df_loc.empty:
-            values = df_loc['Ground Level'].tolist()
-            names = df_loc['Location ID'].tolist()
+        # time = params.page_3.number_field_1 * 30        # Convert months to days
+
+        # if not df_loc.empty:
+        #     values = df_loc['Ground Level'].tolist()
+        #     names = df_loc['Location ID'].tolist()
+
+        if not df_settl_results.empty and 'settlement' in df_settl_results.columns:
+            values = df_settl_results['settlement'].tolist()
+            names = df_settl_results.index.tolist()
+        else:
+            print("Error: Settlement results DataFrame is empty or missing 'settlement' column.")
         
         # svg_data = create_heatmap(df_loc, '', '')
         svg_data = create_heatmap(df_loc, values, names, point_size, toggle_annotations)

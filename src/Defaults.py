@@ -19,7 +19,7 @@ def create_default_mat_prop():
     """
 
     material = ['9', '8', '7', '6', '5', '4', '3', '2', '1']
-    name = ['Stiff fine SAND', 'Stiff SAND', 'Dense SAND', 'SAND', 'Silty SAND', 'Silty CLAY', 'CLAY', 'Organic CLAY', 'Peat']
+    name = ['Stiff fine-grained SAND', 'Stiff SAND', 'Dense SAND', 'SAND', 'Silty SAND', 'Silty CLAY', 'CLAY', 'Organic CLAY', 'Peat']
     y_dry = [19.0, 19.0, 19.0, 19.0, 18.0, 18.0, 17.0, 13.0, 12.0]  # in kPa
     y_sat = [21.0, 21.0, 21.0, 21.0, 20.0, 18.0, 17.0, 13.0, 12.0]  # in kPa
     color = ['yellow', 'yellow', 'yellow', 'yellow', 'lightyellow', 'gray', 'darkgray', 'brown', 'red']

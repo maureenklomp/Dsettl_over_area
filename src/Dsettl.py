@@ -6,7 +6,7 @@ import geolib as gl
 from pathlib import Path
 from datetime import timedelta
 
-def create_dsettlement_model(material_properties, const_model, consol_model, GWT, load_value, load_thickness, ground_level, levels, layer_names):
+def create_dsettlement_model(material_properties, const_model, consol_model, GWT, load_value, load_thickness, ground_level, levels, layer_names, location_id):
     
     # Catching input errors
     violations = []
@@ -106,8 +106,7 @@ def create_dsettlement_model(material_properties, const_model, consol_model, GWT
         gamma_wet=load_value,
     )
 
-    input_test_file = Path("Example5.sli")
-    model.serialize(input_test_file)
+    
 
     # Try execution approaches
     file = vkt.File()
@@ -115,8 +114,8 @@ def create_dsettlement_model(material_properties, const_model, consol_model, GWT
     model.serialize(path)
     
     dsettlementanalysis = vkt.dsettlement.DSettlementAnalysis(input_file=file)
-    dsettlementanalysis.execute()
-   
+    dsettlementanalysis.execute(timeout=600)
+
     # Obtain the result file.
     sld_file = dsettlementanalysis.get_sld_file()
 
@@ -124,9 +123,15 @@ def create_dsettlement_model(material_properties, const_model, consol_model, GWT
     sld_string = sld_file.getvalue()
     # sld_string = sld_bytes.decode('utf-8')
 
-    # Save results to a local file (if running locally)
-    # with open("Example3.sld", "w") as f:
-    #     f.write(sld_file.getvalue())   
+    # if download_bool:
+    #     sli_filename = str(location_id) + ".sli"  
+    #     input_test_file = Path(sli_filename)
+    #     model.serialize(input_test_file)
+
+    #     sld_filename = str(location_id) + ".sld"  
+    #     # Save results to a local file (if running locally)
+    #     with open(sld_filename, "w") as f:
+    #         f.write(sld_file.getvalue())   
 
     return sld_string
 
@@ -166,3 +171,25 @@ def create_Dset_geometry(df_bh, ground_level, material_table):
             name.append(mat)
         
         return material, depth_top, depth_base, color, name, thickness
+
+
+def get_layers(filtered_df_bh, ground_level, material_table):
+    if not filtered_df_bh.empty:
+        materials, depth_tops, depth_bases, colors, names, thicknesses = create_Dset_geometry(filtered_df_bh, ground_level, material_table)
+    
+    depth_base_array = np.array(depth_bases)
+    reversed_array = depth_base_array[::-1].tolist()
+
+    names_array = np.array(names)
+    layer_names = names_array[::-1].tolist()
+    
+    # Ensure ground_level is added to each element
+    levels = reversed_array + [float(ground_level)]
+
+    return levels, layer_names
+
+# def download_model(download_bool, material_properties, const_model, consol_model, GWT, load_value, load_thickness, ground_level, levels, layer_names, location_id):
+#     download_bool = True
+#     sld_string = create_dsettlement_model(material_properties, const_model, consol_model, GWT, load_value, load_thickness, ground_level, levels, layer_names, location_id, download_bool=download_bool)
+
+#     return sld_string
