@@ -222,8 +222,7 @@ class Controller(vkt.Controller):
 
     # ALL LOCATIONS
     # This shows a table of the settlement results at a certain time for all locations
-    @vkt.TableView('ALL Settlement results', duration_guess=10)
-    def plot_settl_results(self, params, **kwargs):
+    def settl_results(self, params, **kwargs):
         # Create dataframes for locations and boreholes
         df_loc, df_bh = self.input_csvs(params)
         # Material table
@@ -315,25 +314,25 @@ class Controller(vkt.Controller):
         else:
             result = pd.DataFrame({'Message': ['No valid locations found']})
     
-        return vkt.TableResult(result)
+        return result
     
+    @vkt.TableView('ALL Settlement results', duration_guess=10)
+    def plot_settl_results(self, params, **kwargs):
+        df_settl_results = self.settl_results(params)
+
+        return vkt.TableResult(df_settl_results)
+
 
     @vkt.ImageView("Heatmap")
     def plot_heatmap(self, params, **kwargs):
         # Create dataframes for locations and boreholes
         df_loc, df_bh = self.input_csvs(params)
 
-        df_settl_results = self.plot_settl_results(params)
+        df_settl_results = self.settl_results(params)
 
          # Define point size and annotation toggle
         point_size = params.page_3.number_field_2
         toggle_annotations = params.page_3.is_true
-
-        # time = params.page_3.number_field_1 * 30        # Convert months to days
-
-        # if not df_loc.empty:
-        #     values = df_loc['Ground Level'].tolist()
-        #     names = df_loc['Location ID'].tolist()
 
         if not df_settl_results.empty and 'settlement' in df_settl_results.columns:
             values = df_settl_results['settlement'].tolist()
