@@ -6,7 +6,7 @@ import geolib as gl
 from pathlib import Path
 from datetime import timedelta
 
-def create_dsettlement_model(material_properties, const_model, consol_model, GWT, load_value, load_thickness, ground_level, levels, layer_names, location_id):
+def create_dsettlement_model(material_properties, const_model, consol_model, GWT, levels, layer_names):
     
     # Catching input errors
     violations = []
@@ -16,8 +16,6 @@ def create_dsettlement_model(material_properties, const_model, consol_model, GWT
         violations.append(vkt.InputViolation("Constitutive model cannot be Koppejan, only NEN-Bjerrum is currently available", fields=[const_model]))
     if GWT is None:
         violations.append(vkt.InputViolation("Groundwater level must be specified", fields=[GWT]))
-    if load_value is None or load_thickness is None:
-        violations.append(vkt.InputViolation("Load value and thickness must be specified", fields=[load_value, load_thickness]))
 
     if violations:
         raise vkt.UserError("Invalid input for constitutive or consolidation model", input_violations=violations)
@@ -90,7 +88,21 @@ def create_dsettlement_model(material_properties, const_model, consol_model, GWT
     p0 = gl.geometry.Point(x=25, z=0)
     model.set_verticals([p0])
 
-    # Add uniform load
+    return model
+
+
+def add_uniform_dsettlem_loads(model, load_value, load_thickness, ground_level):
+    """
+    Add uniform load to the model
+    """
+    # Catching input errors
+    violations = []
+    if load_value is None or load_thickness is None:
+        violations.append(vkt.InputViolation("Load value and thickness must be specified", fields=[load_value, load_thickness]))
+
+    if violations:
+        raise vkt.UserError("Invalid input for constitutive or consolidation model", input_violations=violations)
+
     # set up the point list
     point3 = gl.geometry.Point(label="1", x=10, y=0, z=ground_level)
     point4 = gl.geometry.Point(label="2", x=10, y=0, z=ground_level + load_thickness)
@@ -106,8 +118,13 @@ def create_dsettlement_model(material_properties, const_model, consol_model, GWT
         gamma_wet=load_value,
     )
 
-    
+    return model
 
+    
+def run_model(model):
+    """
+    Run the model and return the SLD file content as a string
+    """
     # Try execution approaches
     file = vkt.File()
     path = Path(file.source)
@@ -118,6 +135,7 @@ def create_dsettlement_model(material_properties, const_model, consol_model, GWT
 
     # Obtain the result file.
     sld_file = dsettlementanalysis.get_sld_file()
+    sli_file = file
 
     # Read the raw content
     sld_string = sld_file.getvalue()
@@ -133,7 +151,7 @@ def create_dsettlement_model(material_properties, const_model, consol_model, GWT
     #     with open(sld_filename, "w") as f:
     #         f.write(sld_file.getvalue())   
 
-    return sld_string
+    return sld_string, sld_file, sli_file
 
 
 def create_Dset_geometry(df_bh, ground_level, material_table):
@@ -188,8 +206,3 @@ def get_layers(filtered_df_bh, ground_level, material_table):
 
     return levels, layer_names
 
-# def download_model(download_bool, material_properties, const_model, consol_model, GWT, load_value, load_thickness, ground_level, levels, layer_names, location_id):
-#     download_bool = True
-#     sld_string = create_dsettlement_model(material_properties, const_model, consol_model, GWT, load_value, load_thickness, ground_level, levels, layer_names, location_id, download_bool=download_bool)
-
-#     return sld_string

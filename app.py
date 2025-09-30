@@ -8,7 +8,7 @@ import numpy as np
 
 from src.Helper import create_df, find_ground_level, find_filtered_df_bh
 from src.Defaults import create_default_mat_prop
-from src.Dsettl import create_Dset_geometry, create_dsettlement_model, get_layers
+from src.Dsettl import create_Dset_geometry, create_dsettlement_model, get_layers, add_uniform_dsettlem_loads, run_model
 from src.Dsettl_results import extract_iteration_results_dset
 from src.Visualizations import create_geo_profile_and_map, create_heatmap, create_settl_graphs
 from src.ASCII import get_train
@@ -16,6 +16,8 @@ from src.ASCII import get_train
 from io import BytesIO, StringIO
 import geolib as gl
 from datetime import timedelta
+import zipfile
+from pathlib import Path
 
 model_types = {'NEN_BJERRUM': gl.models.dsettlement.internal.SoilModel.NEN_BJERRUM, 'NEN_KOPPEJAN': gl.models.dsettlement.internal.SoilModel.NEN_KOPPEJAN, 'ISOTACHE': gl.models.dsettlement.internal.SoilModel.ISOTACHE}
 cons_model_types = {"DARCY": gl.models.dsettlement.internal.ConsolidationModel.DARCY, "TERZAGHI": gl.models.dsettlement.internal.ConsolidationModel.TERZAGHI}
@@ -89,9 +91,11 @@ class Parametrization(vkt.Parametrization):
 
 
     page_2 = vkt.Page("Results per location", views=["show_borehole_csv", "get_combined_geo_profile_and_map", "plot_settl_graph"], width=20)
-    page_2.boolean_field_1 = vkt.BooleanField("Logarithmic time axis", default=True, flex=100)
-    page_2.option_field_1 = vkt.OptionField("Location ID for preview", options=get_location_filter_list, visible=_filter_list_vis)
-
+    page_2.section_1 = vkt.Section("Select location", description="Select a location to see the results for that specific location")
+    page_2.section_1.option_field_1 = vkt.OptionField("Location ID for preview", options=get_location_filter_list, visible=_filter_list_vis, flex=100)
+    page_2.section_1.boolean_field_1 = vkt.BooleanField("Logarithmic time axis", default=True, flex=100)
+    page_2.section_2 = vkt.Section("Download model", description="Download the model files for this location")
+    page_2.section_2.button = vkt.DownloadButton("Download model as zip", method = "download_zip", flex=100)
 
     page_3 = vkt.Page("Results for ALL locations", views=["plot_settl_results","plot_heatmap"], width=20)
     page_3.number_field_1 = vkt.NumberField("Settlement at ... months:", default=6, min=0, max=24, step=1, variant="slider", flex=100)
@@ -144,8 +148,8 @@ class Controller(vkt.Controller):
         # Create dataframes for locations and boreholes
         df_loc, df_bh = self.input_csvs(params)
 
-        if params.page_2.option_field_1:
-            filtered_df_bh = df_bh[df_bh['Location ID'] == params.page_2.option_field_1]
+        if params.page_2.section_1.option_field_1:
+            filtered_df_bh = df_bh[df_bh['Location ID'] == params.page_2.section_1.option_field_1]
             # Define desired columns and check which ones exist
             desired_columns = ["Location ID", "Depth Top", "Depth Base", "Description", "Geology Code Arup"]
             available_columns = [col for col in desired_columns if col in filtered_df_bh.columns]
@@ -167,8 +171,8 @@ class Controller(vkt.Controller):
 
         material_table = params.page_1.tab_1.section_2.table_1
         
-        location_id = params.page_2.option_field_1
-        log = params.page_2.boolean_field_1
+        location_id = params.page_2.section_1.option_field_1
+        log = params.page_2.section_1.boolean_field_1
 
         ground_level = find_ground_level(df_loc, location_id)
         filtered_df_bh = find_filtered_df_bh(df_loc, df_bh, location_id)
@@ -177,7 +181,7 @@ class Controller(vkt.Controller):
             levels, layer_names = get_layers(filtered_df_bh, ground_level, material_table)
 
         time_in_days = np.logspace(0.1, 4, 20)
-        d = self.create_Dsettl_model(params, ground_level, levels, layer_names, location_id)
+        d, sld_file, sli_file = self.create_Dsettl_model(params, ground_level, levels, layer_names, location_id)
 
         settlements = []
         for t in time_in_days:
@@ -200,9 +204,18 @@ class Controller(vkt.Controller):
         load_value = params.page_1.tab_5.section_1.number_field_1
         load_thickness = params.page_1.tab_5.section_1.number_field_2
 
-        result = create_dsettlement_model(material_properties, const_model, consol_model, GWT, load_value, load_thickness, ground_level, levels, layer_names, location_id)
+        # Uniform load always true for now
+        uniform_load_bool = True
 
-        return result
+        model = create_dsettlement_model(material_properties, const_model, consol_model, GWT, levels, layer_names)
+        if uniform_load_bool:
+            model = add_uniform_dsettlem_loads(model, load_value, load_thickness, ground_level)
+        else:
+            pass
+
+        result, sld_file, sli_file = run_model(model)
+
+        return result, sld_file, sli_file
 
     
     @vkt.PlotlyView('Geological Profile', duration_guess=1)
@@ -211,7 +224,7 @@ class Controller(vkt.Controller):
         df_loc, df_bh = self.input_csvs(params)
         
         #select parameters from input
-        Location_id = params.page_2.option_field_1
+        Location_id = params.page_2.section_1.option_field_1
         coord_system = params.page_1.tab_2.option_field_1
         material_table = params.page_1.tab_1.section_2.table_1
 
@@ -222,6 +235,7 @@ class Controller(vkt.Controller):
 
     # ALL LOCATIONS
     # This shows a table of the settlement results at a certain time for all locations
+    @vkt.memoize
     def settl_results(self, params, **kwargs):
         # Create dataframes for locations and boreholes
         df_loc, df_bh = self.input_csvs(params)
@@ -234,6 +248,9 @@ class Controller(vkt.Controller):
         # Get all location IDs (including those without borehole data)
         valid_location_ids = [loc_id for loc_id in df_loc['Location ID'].unique() if loc_id != '' and pd.notna(loc_id)]
         total_calculations = len(valid_location_ids)
+
+        load_value = params.page_1.tab_5.section_1.number_field_1
+        load_thickness = params.page_1.tab_5.section_1.number_field_2
 
         print(f"Total locations to process: {total_calculations}")
         print(f"Location IDs: {valid_location_ids}")
@@ -269,7 +286,7 @@ class Controller(vkt.Controller):
                     levels, layer_names = get_layers(filtered_df_bh, ground_level, material_table)
 
                     # Create and run model
-                    d = self.create_Dsettl_model(params, ground_level, levels, layer_names, location_id)
+                    d, sld_file, sli_file = self.create_Dsettl_model(params, ground_level, levels, layer_names, location_id)
                     result_dict = extract_iteration_results_dset(d, time=time_in_days)
                     
                     # Add location ID to the result dictionary
@@ -322,12 +339,12 @@ class Controller(vkt.Controller):
 
         return vkt.TableResult(df_settl_results)
 
-
     @vkt.ImageView("Heatmap")
     def plot_heatmap(self, params, **kwargs):
         # Create dataframes for locations and boreholes
         df_loc, df_bh = self.input_csvs(params)
 
+        # This will now use the cached result if available
         df_settl_results = self.settl_results(params)
 
          # Define point size and annotation toggle
@@ -346,6 +363,22 @@ class Controller(vkt.Controller):
         return vkt.ImageResult(svg_data)
 
 
+    def download_zip(self, params, **kwargs):
+        # Create dataframes for locations and boreholes
+        df_loc, df_bh = self.input_csvs(params)
+        location_id = params.page_2.section_1.option_field_1
+        material_table = params.page_1.tab_1.section_2.table_1
+        
+        file = vkt.File()
+
+        ground_level = find_ground_level(df_loc, location_id)
+        filtered_df_bh = find_filtered_df_bh(df_loc, df_bh, location_id)
+
+        levels, layer_names = get_layers(filtered_df_bh, ground_level, material_table)
+
+        result, sld_file, sli_file = self.create_Dsettl_model(params, ground_level, levels, layer_names, location_id)
+
+        return vkt.DownloadResult(zipped_files={f"{location_id}.sli": sli_file, f"{location_id}.sld": sld_file}, file_name=f"{location_id}_model.zip")
 
 
 
