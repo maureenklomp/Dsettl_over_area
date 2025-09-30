@@ -120,6 +120,70 @@ def add_uniform_dsettlem_loads(model, load_value, load_thickness, ground_level):
 
     return model
 
+
+def add_table_loads(model, loads_table, ground_level):
+    """
+    Add loads from a table to the model
+    """
+    # Catching input errors
+    violations = []
+    if loads_table is None or len(loads_table) == 0:
+        violations.append(vkt.InputViolation("Load table must be specified", fields=[loads_table]))
+
+    if violations:
+        raise vkt.UserError("Invalid input for load table", input_violations=violations)
+
+    for row in loads_table:
+        name = row['col_1']
+        time_start = row['col_2']
+        time_end = row['col_3']
+        load_value = row['col_4']
+        load_thickness = row['col_5']
+
+        # set up the point list
+        point3 = gl.geometry.Point(label="1", x=10, y=0, z=ground_level)
+        point4 = gl.geometry.Point(label="2", x=10, y=0, z=ground_level + load_thickness)
+        point5 = gl.geometry.Point(label="3", x=40, y=0, z=ground_level + load_thickness)
+        point6 = gl.geometry.Point(label="4", x=40, y=0, z=ground_level)
+        pointlist = [point3, point4, point5, point6]
+        
+        # Add uniform load from table
+        model.add_non_uniform_load(
+            name=name,
+            points=pointlist,
+            time_start=timedelta(days=time_start),
+            time_end=timedelta(days=time_end),
+            gamma_dry=load_value,
+            gamma_wet=load_value,
+        )
+
+
+    input_test_file = Path("Test.sli")
+    model.serialize(input_test_file)
+
+    return model
+
+
+# TODO Develop feature
+def add_time_steps(model, time_steps):
+    """
+    Add time steps to the model
+
+    Feature to be developed
+    """
+    # Catching input errors
+    violations = []
+    if time_steps is None or len(time_steps) == 0:
+        violations.append(vkt.InputViolation("Time steps must be specified", fields=[time_steps]))
+
+    if violations:
+        raise vkt.UserError("Invalid input for time steps", input_violations=violations)
+
+    # for step in time_steps:
+    #     model.add_time_step(timedelta(days=step))
+
+    return model
+
     
 def run_model(model):
     """
@@ -139,17 +203,6 @@ def run_model(model):
 
     # Read the raw content
     sld_string = sld_file.getvalue()
-    # sld_string = sld_bytes.decode('utf-8')
-
-    # if download_bool:
-    #     sli_filename = str(location_id) + ".sli"  
-    #     input_test_file = Path(sli_filename)
-    #     model.serialize(input_test_file)
-
-    #     sld_filename = str(location_id) + ".sld"  
-    #     # Save results to a local file (if running locally)
-    #     with open(sld_filename, "w") as f:
-    #         f.write(sld_file.getvalue())   
 
     return sld_string, sld_file, sli_file
 
