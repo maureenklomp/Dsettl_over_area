@@ -22,6 +22,8 @@ from pathlib import Path
 model_types = {'NEN_BJERRUM': gl.models.dsettlement.internal.SoilModel.NEN_BJERRUM, 'NEN_KOPPEJAN': gl.models.dsettlement.internal.SoilModel.NEN_KOPPEJAN, 'ISOTACHE': gl.models.dsettlement.internal.SoilModel.ISOTACHE}
 cons_model_types = {"DARCY": gl.models.dsettlement.internal.ConsolidationModel.DARCY, "TERZAGHI": gl.models.dsettlement.internal.ConsolidationModel.TERZAGHI}
 
+times = {'1 month': 1, '6 months': 6, '9 months': 9, '1 year': 12, '60 years': 720, '100 years': 1200}
+
 def get_location_filter_list(params, **kwargs):
         """
         This function returns a list of location IDs that can be used as option input for the borehole data tab
@@ -103,7 +105,7 @@ class Parametrization(vkt.Parametrization):
     page_2.section_2.button = vkt.DownloadButton("Download model as zip", method = "download_zip", flex=100)
 
     page_3 = vkt.Page("Results for ALL locations", views=["plot_settl_results","plot_heatmap"], width=20)
-    page_3.number_field_1 = vkt.NumberField("Settlement at ... months:", default=6, min=0, max=24, step=1, variant="slider", flex=100)
+    page_3.number_field_1 = vkt.OptionField("Settlement at time:", options = list(times.keys()), flex=100)
     page_3.number_field_2 = vkt.NumberField("Adjust the point size on the heatmap", default=50, min=0, max=200, step=10, variant="slider", flex=100)
     page_3.is_true = vkt.BooleanField("Show annotations on heatmap", default=True, flex=100)
     page_3.option_field_1 = vkt.OptionField("Results to show on heatmap", options=["settlement", "new ground level"], default="new ground level", variant="radio-inline", flex=100)
@@ -249,7 +251,7 @@ class Controller(vkt.Controller):
         loads_table = params.page_1.tab_5.section_1.table_1
         
         # Define time in days:
-        time_in_days = params.page_3.number_field_1 * 30 # Approximate conversion from months to days
+        time_in_days = times[params.page_3.number_field_1] * 30 # Approximate conversion from months to days
 
         # Get all location IDs (including those without borehole data)
         valid_location_ids = [loc_id for loc_id in df_loc['Location ID'].unique() if loc_id != '' and pd.notna(loc_id)]
