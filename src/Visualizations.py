@@ -164,7 +164,7 @@ def create_heatmap(df, values, names, point_size, toggle_annotations):
     return svg_data
 
 
-def create_settl_graphs(model, log):
+def create_settl_graphs(model, log, ground_level, loads_table):
     d = model
     
     # Create subplots: 2 rows, 1 column
@@ -175,17 +175,17 @@ def create_settl_graphs(model, log):
         row_heights=[0.5, 0.5]  # Changed from column_widths to row_heights
     )
 
-    time_in_days = np.logspace(0.1, 4, 20)
+    time_in_days = np.logspace(0.1, 4.56, 30)
     time_in_days_year = np.logspace(0.1, 2.56, 12)
     
     settlements = []
     for t in time_in_days:
-        result_dict = extract_iteration_results_dset(d, time=t)
+        result_dict = extract_iteration_results_dset(d, time=t, ground_level=ground_level, loads_table=loads_table)
         settlements.append(result_dict.get('settlement', 0))
 
     settlements_year = []
     for t in time_in_days_year:
-        result_dict_year = extract_iteration_results_dset(d, time=t)
+        result_dict_year = extract_iteration_results_dset(d, time=t, ground_level=ground_level, loads_table=loads_table)
         settlements_year.append(result_dict_year.get('settlement', 0))
     
     # Add traces to correct subplots

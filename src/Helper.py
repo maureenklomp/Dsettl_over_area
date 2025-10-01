@@ -127,3 +127,34 @@ def find_filtered_df_bh(df_loc, df_bh, location_id):
         filtered_df_bh = df_bh[df_bh['Location ID'] == location_id]
     
         return filtered_df_bh
+    
+def find_new_level(ground_level, loads_table, settlement):
+    """
+    Calculate new ground level after settlement and added load layers
+    """
+    current_top_level = ground_level
+
+    for row in loads_table:
+        name = row['col_1']
+        time_start = row['col_2']
+        load_value = row['col_3']
+        load_thickness = row['col_4']
+
+        if load_value >= 0:
+            current_top_level = current_top_level + load_thickness
+        else:
+            current_top_level = current_top_level - load_thickness
+        
+    new_level = current_top_level - settlement
+    return new_level
+
+
+
+    
+    # if ground_level is not None:
+    #     total_added_load = sum(added_load_layers) if added_load_layers else 0
+    #     new_level = ground_level - settlement - total_added_load
+    #     return new_level
+    # else:
+    #     print(f"Warning: Ground level for Location ID '{location_id}' is None, cannot calculate new level.")
+    #     return None

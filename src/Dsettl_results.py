@@ -1,7 +1,8 @@
 import re
 import pandas as pd
+from src.Helper import find_new_level
 
-def extract_iteration_results_dset(sld_string, time):
+def extract_iteration_results_dset(sld_string, time, ground_level, loads_table):
     """
     Extract settlement results from SLD file content at a specific time.
     
@@ -81,7 +82,9 @@ def extract_iteration_results_dset(sld_string, time):
     if tables:
         closest_table = min(tables, key=lambda x: abs(x['time'] - time))
         results = {
+            'ground_level': ground_level,
             'settlement': closest_table['settlement'],
+            'new_level': round(find_new_level(ground_level, loads_table, settlement=closest_table['settlement']),2),
             'effective_vertical_stress': closest_table['effective_vertical_stress'],
             'time_found': closest_table['time']
         }

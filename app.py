@@ -48,7 +48,7 @@ class Parametrization(vkt.Parametrization):
     # Model Properties tab
     page_1.tab_1 = vkt.Tab("Model properties", description="What are the modelling properties for this project?")
     page_1.tab_1.section_1 = vkt.Section("Model types", description="Types for calculation and consolidation")
-    page_1.tab_1.section_1.autocomplete_field_1 = vkt.AutocompleteField("Settlement calculation method", suffix="Settlement calculation method", options=list(model_types.keys()), default='NEN_BJERRUM')
+    page_1.tab_1.section_1.autocomplete_field_1 = vkt.AutocompleteField("Settlement calculation method", options=list(model_types.keys()), default='NEN_BJERRUM')
     page_1.tab_1.section_1.option_field_1 = vkt.OptionField("Consoldiation Model", options=list(cons_model_types.keys()), default='DARCY', variant="radio")
     
     # Material Properties tab
@@ -106,6 +106,7 @@ class Parametrization(vkt.Parametrization):
     page_3.number_field_1 = vkt.NumberField("Settlement at ... months:", default=6, min=0, max=24, step=1, variant="slider", flex=100)
     page_3.number_field_2 = vkt.NumberField("Adjust the point size on the heatmap", default=50, min=0, max=200, step=10, variant="slider", flex=100)
     page_3.is_true = vkt.BooleanField("Show annotations on heatmap", default=True, flex=100)
+    page_3.option_field_1 = vkt.OptionField("Results to show on heatmap", options=["settlement", "new ground level"], default="new ground level", variant="radio-inline", flex=100)
 
 
 class Controller(vkt.Controller):
@@ -190,10 +191,10 @@ class Controller(vkt.Controller):
 
         settlements = []
         for t in time_in_days:
-            result_dict = extract_iteration_results_dset(d, time=t)
+            result_dict = extract_iteration_results_dset(d, time=t, ground_level=ground_level, loads_table=params.page_1.tab_5.section_1.table_1)
             settlements.append(result_dict.get('settlement', 0))
         
-        fig = create_settl_graphs(d, log)
+        fig = create_settl_graphs(d, log, ground_level, loads_table=params.page_1.tab_5.section_1.table_1)
 
         return vkt.PlotlyResult(fig)  # Changed from: return fig
         
@@ -237,12 +238,15 @@ class Controller(vkt.Controller):
 
     # ALL LOCATIONS
     # This shows a table of the settlement results at a certain time for all locations
-    @vkt.memoize
+    # @vkt.memoize
     def settl_results(self, params, **kwargs):
         # Create dataframes for locations and boreholes
         df_loc, df_bh = self.input_csvs(params)
         # Material table
         material_table = params.page_1.tab_1.section_2.table_1
+
+        # loads table
+        loads_table = params.page_1.tab_5.section_1.table_1
         
         # Define time in days:
         time_in_days = params.page_3.number_field_1 * 30 # Approximate conversion from months to days
@@ -250,9 +254,6 @@ class Controller(vkt.Controller):
         # Get all location IDs (including those without borehole data)
         valid_location_ids = [loc_id for loc_id in df_loc['Location ID'].unique() if loc_id != '' and pd.notna(loc_id)]
         total_calculations = len(valid_location_ids)
-
-        load_value = params.page_1.tab_5.section_1.number_field_1
-        load_thickness = params.page_1.tab_5.section_1.number_field_2
 
         print(f"Total locations to process: {total_calculations}")
         print(f"Location IDs: {valid_location_ids}")
@@ -289,7 +290,7 @@ class Controller(vkt.Controller):
 
                     # Create and run model
                     d, sld_file, sli_file = self.create_Dsettl_model(params, ground_level, levels, layer_names, location_id)
-                    result_dict = extract_iteration_results_dset(d, time=time_in_days)
+                    result_dict = extract_iteration_results_dset(d, time=time_in_days, ground_level=ground_level, loads_table=loads_table)
                     
                     # Add location ID to the result dictionary
                     result_dict['Location_ID'] = location_id
@@ -353,11 +354,21 @@ class Controller(vkt.Controller):
         point_size = params.page_3.number_field_2
         toggle_annotations = params.page_3.is_true
 
-        if not df_settl_results.empty and 'settlement' in df_settl_results.columns:
-            values = df_settl_results['settlement'].tolist()
-            names = df_settl_results.index.tolist()
-        else:
-            print("Error: Settlement results DataFrame is empty or missing 'settlement' column.")
+        # Option field for showing results on heatmap
+        option_field_result = params.page_3.option_field_1
+
+        if option_field_result == 'settlement':
+            if not df_settl_results.empty and 'settlement' in df_settl_results.columns:
+                values = df_settl_results['settlement'].tolist()
+                names = df_settl_results.index.tolist()
+            else:
+                print("Error: Settlement results DataFrame is empty or missing 'settlement' column.")
+        elif option_field_result == 'new ground level':
+            if not df_settl_results.empty and 'new_level' in df_settl_results.columns:
+                values = df_settl_results['new_level'].tolist()
+                names = df_settl_results.index.tolist()
+            else:
+                print("Error: Settlement results DataFrame is empty or missing 'new_level' column.")
         
         # svg_data = create_heatmap(df_loc, '', '')
         svg_data = create_heatmap(df_loc, values, names, point_size, toggle_annotations)
