@@ -51,20 +51,18 @@ def create_default_loads():
     Create default load properties for uniform loads on the area
     """
 
-    name = ['Load 1', 'Load 2']
-    time_start = [0, 300]
-    time_end = time_start
-    load_value = [20, -20]
-    load_thickness = [1, 0.5]
+    name = ['Load 1', 'Load 2', 'Unloading']
+    time_start = [0, 0, 300]
+    load_value = [20, 20, -20]
+    load_thickness = [1, 0.5, 0.3]
     
     loads = []
     for i in range(len(time_start)):
         loads.append({
             'col_1': name[i],
             'col_2': time_start[i],
-            'col_3': time_end[i],
-            'col_4': load_value[i],
-            'col_5': load_thickness[i],
+            'col_3': load_value[i],
+            'col_4': load_thickness[i],
         })
 
     return loads

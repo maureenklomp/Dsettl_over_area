@@ -91,36 +91,6 @@ def create_dsettlement_model(material_properties, const_model, consol_model, GWT
     return model
 
 
-def add_uniform_dsettlem_loads(model, load_value, load_thickness, ground_level):
-    """
-    Add uniform load to the model
-    """
-    # Catching input errors
-    violations = []
-    if load_value is None or load_thickness is None:
-        violations.append(vkt.InputViolation("Load value and thickness must be specified", fields=[load_value, load_thickness]))
-
-    if violations:
-        raise vkt.UserError("Invalid input for constitutive or consolidation model", input_violations=violations)
-
-    # set up the point list
-    point3 = gl.geometry.Point(label="1", x=10, y=0, z=ground_level)
-    point4 = gl.geometry.Point(label="2", x=10, y=0, z=ground_level + load_thickness)
-    point5 = gl.geometry.Point(label="3", x=40, y=0, z=ground_level + load_thickness)
-    point6 = gl.geometry.Point(label="4", x=40, y=0, z=ground_level)
-    pointlist = [point3, point4, point5, point6]
-    # Add first uniform load
-    model.add_non_uniform_load(
-        name="My First Load",
-        points=pointlist,
-        time_start=timedelta(days=0),
-        gamma_dry=load_value,
-        gamma_wet=load_value,
-    )
-
-    return model
-
-
 def add_table_loads(model, loads_table, ground_level):
     """
     Add loads from a table to the model
@@ -133,18 +103,37 @@ def add_table_loads(model, loads_table, ground_level):
     if violations:
         raise vkt.UserError("Invalid input for load table", input_violations=violations)
 
+    current_top_level = ground_level  # Track the current top level
+    
     for row in loads_table:
         name = row['col_1']
         time_start = row['col_2']
-        time_end = row['col_3']
-        load_value = row['col_4']
-        load_thickness = row['col_5']
+        load_value = row['col_3']
+        load_thickness = row['col_4']
 
-        # set up the point list
-        point3 = gl.geometry.Point(label="1", x=10, y=0, z=ground_level)
-        point4 = gl.geometry.Point(label="2", x=10, y=0, z=ground_level + load_thickness)
-        point5 = gl.geometry.Point(label="3", x=40, y=0, z=ground_level + load_thickness)
-        point6 = gl.geometry.Point(label="4", x=40, y=0, z=ground_level)
+        if load_value >= 0:
+            # Positive load: add material on top
+            current_base_level = current_top_level
+            current_top_level = current_base_level + load_thickness
+            
+            # For positive loads: normal point order (base to top)
+            point3 = gl.geometry.Point(label="1", x=10, y=0, z=current_base_level)
+            point4 = gl.geometry.Point(label="2", x=10, y=0, z=current_top_level)
+            point5 = gl.geometry.Point(label="3", x=40, y=0, z=current_top_level)
+            point6 = gl.geometry.Point(label="4", x=40, y=0, z=current_base_level)
+        else:
+            # Negative load: excavate/remove material
+            current_base_level = current_top_level - load_thickness
+            
+            # For negative loads: points 3,6 at top, points 4,5 at bottom
+            point3 = gl.geometry.Point(label="1", x=10, y=0, z=current_top_level)
+            point4 = gl.geometry.Point(label="2", x=10, y=0, z=current_base_level)
+            point5 = gl.geometry.Point(label="3", x=40, y=0, z=current_base_level)
+            point6 = gl.geometry.Point(label="4", x=40, y=0, z=current_top_level)
+            
+            # Update current top level to the new excavated level
+            current_top_level = current_base_level
+        
         pointlist = [point3, point4, point5, point6]
         
         # Add uniform load from table
@@ -152,35 +141,12 @@ def add_table_loads(model, loads_table, ground_level):
             name=name,
             points=pointlist,
             time_start=timedelta(days=time_start),
-            time_end=timedelta(days=time_end),
             gamma_dry=load_value,
             gamma_wet=load_value,
         )
 
-
-    input_test_file = Path("Test.sli")
-    model.serialize(input_test_file)
-
-    return model
-
-
-# TODO Develop feature
-def add_time_steps(model, time_steps):
-    """
-    Add time steps to the model
-
-    Feature to be developed
-    """
-    # Catching input errors
-    violations = []
-    if time_steps is None or len(time_steps) == 0:
-        violations.append(vkt.InputViolation("Time steps must be specified", fields=[time_steps]))
-
-    if violations:
-        raise vkt.UserError("Invalid input for time steps", input_violations=violations)
-
-    # for step in time_steps:
-    #     model.add_time_step(timedelta(days=step))
+    # input_test_file = Path("Test.sli")
+    # model.serialize(input_test_file)
 
     return model
 

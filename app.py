@@ -8,7 +8,7 @@ import numpy as np
 
 from src.Helper import create_df, find_ground_level, find_filtered_df_bh
 from src.Defaults import create_default_mat_prop, create_default_loads
-from src.Dsettl import create_Dset_geometry, create_dsettlement_model, get_layers, add_uniform_dsettlem_loads, add_table_loads, run_model
+from src.Dsettl import create_Dset_geometry, create_dsettlement_model, get_layers, add_table_loads, run_model
 from src.Dsettl_results import extract_iteration_results_dset
 from src.Visualizations import create_geo_profile_and_map, create_heatmap, create_settl_graphs
 from src.ASCII import get_train
@@ -86,18 +86,13 @@ class Parametrization(vkt.Parametrization):
     page_1.tab_5 = vkt.Tab("Loads")
     
     page_1.tab_5.section_1 = vkt.Section("Uniform Load", description="Input for uniform loads on the area")
-    page_1.tab_5.section_1.boolean_field_1 = vkt.BooleanField("Apply uniform load on the area", default=False, flex=100)
-    page_1.tab_5.section_1.number_field_1 = vkt.NumberField("Unit Weight", flex=100, suffix="kN/m3", min=0)
-    page_1.tab_5.section_1.number_field_2 = vkt.NumberField("Thickness", flex=100, suffix="m", min=0)
     
     page_1.tab_5.section_1.table_1 = vkt.Table("Loads", default=create_default_loads())
 
     page_1.tab_5.section_1.table_1.col_1 = vkt.TextField('Name')
     page_1.tab_5.section_1.table_1.col_2 = vkt.NumberField('Time start [days]')
-    page_1.tab_5.section_1.table_1.col_3 = vkt.NumberField('Time end [days]')
-    page_1.tab_5.section_1.table_1.col_4 = vkt.NumberField('Load value [kPa]')
-    page_1.tab_5.section_1.table_1.col_5 = vkt.NumberField('Load thickness [m]')
-
+    page_1.tab_5.section_1.table_1.col_3 = vkt.NumberField('Load value [kPa]')
+    page_1.tab_5.section_1.table_1.col_4 = vkt.NumberField('Load thickness [m]')
 
 
     page_2 = vkt.Page("Results per location", views=["show_borehole_csv", "get_combined_geo_profile_and_map", "plot_settl_graph"], width=20)
@@ -211,21 +206,14 @@ class Controller(vkt.Controller):
 
         # groundlevel = -0.45
         GWT = params.page_1.tab_4.number_field_1
-        load_value = params.page_1.tab_5.section_1.number_field_1
-        load_thickness = params.page_1.tab_5.section_1.number_field_2
-
-        # Uniform load boolean
-        uniform_load_bool = params.page_1.tab_5.section_1.boolean_field_1
 
         # Create loads table
         loads_table = params.page_1.tab_5.section_1.table_1
 
         model = create_dsettlement_model(material_properties, const_model, consol_model, GWT, levels, layer_names)
         
-        if uniform_load_bool:
-            model = add_uniform_dsettlem_loads(model, load_value, load_thickness, ground_level)
-        else:
-            model = add_table_loads(model, loads_table, ground_level)
+        # if iterative_load_bool:
+        model = add_table_loads(model, loads_table, ground_level)
 
         result, sld_file, sli_file = run_model(model)
 
