@@ -10,7 +10,7 @@ from src.Helper import create_df, find_ground_level, find_filtered_df_bh
 from src.Defaults import create_default_mat_prop, create_default_loads
 from src.Dsettl import create_Dset_geometry, create_dsettlement_model, get_layers, add_table_loads, run_model
 from src.Dsettl_results import extract_iteration_results_dset
-from src.Visualizations import create_geo_profile_and_map, create_heatmap, create_settl_graphs, create_restsettl_scatter
+from src.Visualizations import create_geo_profile_and_map, create_heatmap, create_settl_graphs
 from src.ASCII import get_train
 
 from io import BytesIO, StringIO
