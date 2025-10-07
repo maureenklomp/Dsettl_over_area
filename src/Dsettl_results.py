@@ -81,12 +81,17 @@ def extract_iteration_results_dset(sld_string, time, ground_level, loads_table):
     # Find the table with time closest to the requested time
     if tables:
         closest_table = min(tables, key=lambda x: abs(x['time'] - time))
+        closest_table_9m = min(tables, key=lambda x: abs(x['time'] - 270))  # 9 months in days
+        closest_table_60y = min(tables, key=lambda x: abs(x['time'] - 21900))  # 60 years in days
+        closest_table_end = min(tables, key=lambda x: abs(x['time'] - 21900))  # End of simulation
         results = {
             'ground_level': ground_level,
             'settlement': closest_table['settlement'],
             'new_level': round(find_new_level(ground_level, loads_table, settlement=closest_table['settlement']),2),
             'effective_vertical_stress': closest_table['effective_vertical_stress'],
-            'time_found': closest_table['time']
+            'time_found': closest_table['time'],
+            'restzetting (60 years-9 months)': round(closest_table_60y['settlement'] - closest_table_9m['settlement'], 2),
+            'eindzetting': round(closest_table_end['settlement'], 2)
         }
     
     return results

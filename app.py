@@ -10,7 +10,7 @@ from src.Helper import create_df, find_ground_level, find_filtered_df_bh
 from src.Defaults import create_default_mat_prop, create_default_loads
 from src.Dsettl import create_Dset_geometry, create_dsettlement_model, get_layers, add_table_loads, run_model
 from src.Dsettl_results import extract_iteration_results_dset
-from src.Visualizations import create_geo_profile_and_map, create_heatmap, create_settl_graphs
+from src.Visualizations import create_geo_profile_and_map, create_heatmap, create_settl_graphs, create_restsettl_scatter
 from src.ASCII import get_train
 
 from io import BytesIO, StringIO
@@ -41,7 +41,8 @@ def get_location_filter_list(params, **kwargs):
             return []  
 
 _filter_list_vis = vkt.And(vkt.IsNotNone(vkt.Lookup('page_1.tab_2.file_field_1')),
-                              vkt.IsNotNone(vkt.Lookup('page_1.tab_3.file_field_1')))      
+                              vkt.IsNotNone(vkt.Lookup('page_1.tab_3.file_field_1')))
+
 
 
 class Parametrization(vkt.Parametrization):
@@ -104,12 +105,31 @@ class Parametrization(vkt.Parametrization):
     page_2.section_2 = vkt.Section("Download model", description="Download the model files for this location")
     page_2.section_2.button = vkt.DownloadButton("Download model as zip", method = "download_zip", flex=100)
 
-    page_3 = vkt.Page("Results for ALL locations", views=["plot_settl_results","plot_heatmap"], width=20)
-    page_3.number_field_1 = vkt.OptionField("Settlement at time:", options = list(times.keys()), flex=100)
-    page_3.number_field_2 = vkt.NumberField("Adjust the point size on the heatmap", default=50, min=0, max=200, step=10, variant="slider", flex=100)
-    page_3.is_true = vkt.BooleanField("Show annotations on heatmap", default=True, flex=100)
-    page_3.option_field_1 = vkt.OptionField("Results to show on heatmap", options=["settlement", "new ground level"], default="new ground level", variant="radio-inline", flex=100)
 
+
+
+    page_3 = vkt.Page("Results for ALL locations", views=["plot_settl_results","plot_heatmap", "plot_scatter"], width=30)
+    page_3.section_1 = vkt.Section("Selection of results", description="What results do you want to see?")
+    page_3.section_1.option_field_1 = vkt.OptionField("Results to show on heatmap", options=["zetting na 9 maanden", "new ground level", "restzetting (60 years-9 months)", "eindzetting"], default="restzetting (60 years-9 months)", variant="radio-inline", flex=100)
+    
+    page_3.section_2 = vkt.Section("Visibility settings", description="Adjust the settings for the heatmap")
+    page_3.section_2.number_field_1 = vkt.OptionField("Settlement at time:", options = list(times.keys()), flex=100)
+    page_3.section_2.number_field_2 = vkt.NumberField("Adjust the point size on the heatmap", default=100, min=0, max=200, step=10, variant="slider", flex=100)
+    page_3.section_2.is_true = vkt.BooleanField("Show annotations on heatmap", default=True, flex=100)
+    
+    page_3.section_3 = vkt.Section("Color intervals")
+    page_3.section_3.interval_1_max = vkt.NumberField("Interval 1 Max Value", default=0.125, suffix="m", flex=100)
+    page_3.section_3.interval_2_max = vkt.NumberField("Interval 2 Max Value", default=0.175, suffix="m", flex=100)
+    page_3.section_3.interval_3_max = vkt.NumberField("Interval 3 Max Value", default=0.200, suffix="m", flex=100)
+
+    page_3.section_4 = vkt.Section("Color Customization")
+    page_3.section_4.color_1 = vkt.ColorField("Color Interval 1", default=vkt.Color(0,177,0), flex=100) #green
+    page_3.section_4.color_2 = vkt.ColorField("Color Interval 2", default=vkt.Color(255,165,0), flex=100) #orange
+    page_3.section_4.color_3 = vkt.ColorField("Color Interval 3", default=vkt.Color(255,0,0), flex=100) #red
+    page_3.section_4.color_4 = vkt.ColorField("Color Interval 4", default=vkt.Color(205,0,18), flex=100) #darkred
+
+    page_3.section_5 = vkt.Section("Upload previous settlement results", description="You can upload a previous settlement results .csv file ")
+    page_3.section_5.file_field_1 = vkt.FileField("Upload previous settlement results (.csv)", flex=100, file_types=[".csv"])
 
 class Controller(vkt.Controller):
     label = "My Entity Type"
@@ -128,6 +148,29 @@ class Controller(vkt.Controller):
             df_boreholes = create_df(Boreholes_file)
 
         return df_locations, df_boreholes
+    
+
+    def get_color_for_value(self, value, params):
+        """Determine which color interval a value belongs to and return the corresponding color."""
+        if value <= params.page_3.section_3.interval_1_max:
+            return params.page_3.section_4.color_1.hex
+        elif value <= params.page_3.section_3.interval_2_max:
+            return params.page_3.section_4.color_2.hex
+        elif value <= params.page_3.section_3.interval_3_max:
+            return params.page_3.section_4.color_3.hex
+        else:
+            return params.page_3.section_4.color_4.hex
+
+    def get_interval_label(self, value, params):
+        """Get the interval label for a given value."""
+        if value <= params.page_3.section_3.interval_1_max:
+            return f"≤ {params.page_3.section_3.interval_1_max}"
+        elif value <= params.page_3.section_3.interval_2_max:
+            return f"{params.page_3.section_3.interval_1_max} - {params.page_3.section_3.interval_2_max}"
+        elif value <= params.page_3.section_3.interval_3_max:
+            return f"{params.page_3.section_3.interval_2_max} - {params.page_3.section_3.interval_3_max}"
+        else:
+            return f"> {params.page_3.section_3.interval_3_max}"
 
     
 
@@ -240,7 +283,7 @@ class Controller(vkt.Controller):
 
     # ALL LOCATIONS
     # This shows a table of the settlement results at a certain time for all locations
-    # @vkt.memoize
+    @vkt.memoize
     def settl_results(self, params, **kwargs):
         # Create dataframes for locations and boreholes
         df_loc, df_bh = self.input_csvs(params)
@@ -251,7 +294,7 @@ class Controller(vkt.Controller):
         loads_table = params.page_1.tab_5.section_1.table_1
         
         # Define time in days:
-        time_in_days = times[params.page_3.number_field_1] * 30 # Approximate conversion from months to days
+        time_in_days = times[params.page_3.section_2.number_field_1] * 30 # Approximate conversion from months to days
 
         # Get all location IDs (including those without borehole data)
         valid_location_ids = [loc_id for loc_id in df_loc['Location ID'].unique() if loc_id != '' and pd.notna(loc_id)]
@@ -292,6 +335,7 @@ class Controller(vkt.Controller):
 
                     # Create and run model
                     d, sld_file, sli_file = self.create_Dsettl_model(params, ground_level, levels, layer_names, location_id)
+                    
                     result_dict = extract_iteration_results_dset(d, time=time_in_days, ground_level=ground_level, loads_table=loads_table)
                     
                     # Add location ID to the result dictionary
@@ -314,7 +358,11 @@ class Controller(vkt.Controller):
                     
             except Exception as e:
                 # Handle any errors during processing - ALWAYS add result
-                print(f"Error processing {location_id}: {str(e)}")
+                print(f"ERROR processing {location_id}: {str(e)}")
+                print(f"ERROR type: {type(e)}")
+                import traceback
+                traceback.print_exc()
+                
                 result_dict = {
                     'Location_ID': location_id,
                     'settlement': f'Error: {str(e)[:50]}',  # Truncate long error messages
@@ -322,9 +370,7 @@ class Controller(vkt.Controller):
                     'time_found': 'Error'
                 }
                 all_results.append(result_dict)
-        
-        print(f"Total results collected: {len(all_results)}")
-        print(f"All results: {all_results}")
+
         
         # Create final DataFrame with all results
         if all_results:
@@ -335,12 +381,15 @@ class Controller(vkt.Controller):
             print(f"Final DataFrame:\n{result}")
         else:
             result = pd.DataFrame({'Message': ['No valid locations found']})
-    
+
         return result
     
+    def cached_results(self, params, **kwargs):
+        return self.settl_results(params, **kwargs)
+
     @vkt.TableView('ALL Settlement results', duration_guess=10)
     def plot_settl_results(self, params, **kwargs):
-        df_settl_results = self.settl_results(params)
+        df_settl_results = self.cached_results(params)
 
         return vkt.TableResult(df_settl_results)
 
@@ -348,29 +397,45 @@ class Controller(vkt.Controller):
     def plot_heatmap(self, params, **kwargs):
         # Create dataframes for locations and boreholes
         df_loc, df_bh = self.input_csvs(params)
+        input_csv_settl = params.page_3.section_5.file_field_1
+        if input_csv_settl:
+            df_settl_results = create_df(input_csv_settl)
+            df_settl_results['location id'] = df_settl_results['0']
 
         # This will now use the cached result if available
-        df_settl_results = self.settl_results(params)
+        # df_settl_results = self.cached_results(params)
 
          # Define point size and annotation toggle
-        point_size = params.page_3.number_field_2
-        toggle_annotations = params.page_3.is_true
+        point_size = params.page_3.section_2.number_field_2
+        toggle_annotations = params.page_3.section_2.is_true
 
         # Option field for showing results on heatmap
-        option_field_result = params.page_3.option_field_1
+        option_field_result = params.page_3.section_1.option_field_1
 
-        if option_field_result == 'settlement':
-            if not df_settl_results.empty and 'settlement' in df_settl_results.columns:
-                values = df_settl_results['settlement'].tolist()
-                names = df_settl_results.index.tolist()
+        if option_field_result == 'zetting na 9 maanden':
+            if not df_settl_results.empty and 'zetting na 9 maanden' in df_settl_results.columns:
+                values = df_settl_results['zetting na 9 maanden'].tolist()
+                names = df_settl_results['location id'].tolist()
             else:
-                print("Error: Settlement results DataFrame is empty or missing 'settlement' column.")
+                print("Error: Settlement results DataFrame is empty or missing 'zetting na 9 maanden' column.")
         elif option_field_result == 'new ground level':
             if not df_settl_results.empty and 'new_level' in df_settl_results.columns:
                 values = df_settl_results['new_level'].tolist()
-                names = df_settl_results.index.tolist()
+                names = df_settl_results['location id'].tolist()
             else:
                 print("Error: Settlement results DataFrame is empty or missing 'new_level' column.")
+        elif option_field_result == 'restzetting (60 years-9 months)':
+            if not df_settl_results.empty and 'restzetting (60 years-9 months)' in df_settl_results.columns:
+                values = df_settl_results['restzetting (60 years-9 months)'].tolist()
+                names = df_settl_results['location id'].tolist()
+            else:
+                print("Error: Settlement results DataFrame is empty or missing 'restzetting (60 years-9 months)' column.")
+        elif option_field_result == 'eindzetting':
+            if not df_settl_results.empty and 'eindzetting' in df_settl_results.columns:
+                values = df_settl_results['eindzetting'].tolist()
+                names = df_settl_results['location id'].tolist()
+            else:
+                print("Error: Settlement results DataFrame is empty or missing 'eindzetting' column.")
         
         # svg_data = create_heatmap(df_loc, '', '')
         svg_data = create_heatmap(df_loc, values, names, point_size, toggle_annotations)
@@ -395,6 +460,76 @@ class Controller(vkt.Controller):
 
         return vkt.DownloadResult(zipped_files={f"{location_id}.sli": sli_file, f"{location_id}.sld": sld_file}, file_name=f"{location_id}_model.zip")
 
+    @vkt.ImageView("Scattermap")
+    def plot_scatter(self, params, **kwargs):
+        # Create dataframes for locations and boreholes
+        df_loc, df_bh = self.input_csvs(params)
+        input_csv_settl = params.page_3.section_5.file_field_1
+        if input_csv_settl:
+            df_settl_results = create_df(input_csv_settl)
+            df_settl_results['location id'] = df_settl_results['0']
+
+        option = params.page_3.section_1.option_field_1
+
+         # Define point size and annotation toggle
+        point_size = params.page_3.section_2.number_field_2
+        toggle_annotations = params.page_3.section_2.is_true
 
 
+        if not df_settl_results.empty and 'zetting na 9 maanden' in df_settl_results.columns:
+            values = df_settl_results['restzetting (60 years-9 months)'].tolist()
+            names = df_settl_results['location id'].tolist()
+
+        # Create scatter plot
+        svg_data = create_restsettl_scatter(df_loc, values, names, point_size, toggle_annotations, option_field=option)
+
+        return vkt.ImageResult(svg_data)
+    
+
+    @vkt.MapView("Points Map")
+    def show_points_map(self, params, **kwargs):
+        """Display points on a map with color-coded values."""
+        features = []
+
+        # Create dataframes for locations and boreholes
+        df_loc, df_bh = self.input_csvs(params)
+        input_csv_settl = params.page_3.section_5.file_field_1
+
+
+        
+        # Create map features for each point
+        for point_data in params.data_section.points_data:
+            lat = point_data['latitude']
+            lon = point_data['longitude']
+            value = point_data['value']
+            
+            # Get color based on value and intervals
+            color_hex = self.get_color_for_value(value, params)
+            color_rgb = vkt.Color.hex_to_rgb(color_hex)
+            color = vkt.Color(color_rgb[0], color_rgb[1], color_rgb[2])
+            
+            # Get interval label
+            interval_label = self.get_interval_label(value, params)
+            
+            # Create map point
+            map_point = vkt.MapPoint(
+                lat=lat,
+                lon=lon,
+                title=f"Point (Value: {value})",
+                description=f"Location: ({lat:.4f}, {lon:.4f})\nValue: {value}\nInterval: {interval_label}",
+                color=color,
+                size='medium'
+            )
+            features.append(map_point)
+        
+        # Create legend entries
+        legend_entries = [
+            (params.color_custom_section.color_1, f"≤ {params.color_section.interval_1_max}"),
+            (params.color_custom_section.color_2, f"{params.color_section.interval_1_max} - {params.color_section.interval_2_max}"),
+            (params.color_custom_section.color_3, f"{params.color_section.interval_2_max} - {params.color_section.interval_3_max}"),
+            (params.color_custom_section.color_4, f"> {params.color_section.interval_3_max}")
+        ]
+        legend = vkt.MapLegend(legend_entries)
+        
+        return vkt.MapResult(features, legend=legend)    
 
