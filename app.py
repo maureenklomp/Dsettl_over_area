@@ -108,14 +108,14 @@ class Parametrization(vkt.Parametrization):
 
 
 
-    page_3 = vkt.Page("Results for ALL locations", views=["plot_settl_results","plot_heatmap", "plot_scatter", "show_points_map"], width=30)
+    page_3 = vkt.Page("Results for ALL locations", views=["plot_settl_results","plot_heatmap", "show_points_map"], width=30)
     page_3.section_1 = vkt.Section("Selection of results", description="What results do you want to see?")
     page_3.section_1.option_field_1 = vkt.OptionField("Results to show on heatmap", options=["zetting na 9 maanden", "new ground level", "restzetting (60 years-9 months)", "eindzetting"], default="restzetting (60 years-9 months)", variant="radio-inline", flex=100)
     
     page_3.section_2 = vkt.Section("Visibility settings", description="Adjust the settings for the heatmap")
     page_3.section_2.number_field_1 = vkt.OptionField("Settlement at time:", options = list(times.keys()), flex=100)
     page_3.section_2.number_field_2 = vkt.NumberField("Adjust the point size on the heatmap", default=100, min=0, max=200, step=10, variant="slider", flex=100)
-    page_3.section_2.is_true = vkt.BooleanField("Show annotations on heatmap", default=True, flex=100)
+    page_3.section_2.is_true = vkt.BooleanField("Show annotations on heatmap", default=False, flex=100)
     
     page_3.section_3 = vkt.Section("Color intervals")
     page_3.section_3.interval_1_max = vkt.NumberField("Interval 1 Max Value", default=0.125, suffix="m", flex=100)
