@@ -6,7 +6,7 @@ import geolib as gl
 from pathlib import Path
 from datetime import timedelta
 
-def create_dsettlement_model(material_properties, const_model, consol_model, GWT, levels, layer_names):
+def create_dsettlement_model(material_properties, const_model, consol_model, GWT, levels, layer_names, bool_vert_drain):
     
     # Catching input errors
     violations = []
@@ -25,7 +25,7 @@ def create_dsettlement_model(material_properties, const_model, consol_model, GWT
                     consolidation_model= consol_model,
                     is_two_dimensional=True,
                     strain_type= gl.models.dsettlement.internal.StrainType.LINEAR,
-                    is_vertical_drain=False,
+                    is_vertical_drain=bool_vert_drain,
                     is_fit_for_settlement_plate=False,
                     is_probabilistic=False,
                     is_horizontal_displacements=False,
@@ -150,7 +150,125 @@ def add_table_loads(model, loads_table, ground_level):
 
     return model
 
+def add_vertical_drains(model, drain_type, drain_spacing, drain_bottom, grid_type, start_time, end_time, underpressure, tube_pressure, water_head, phreatic_level, drain_diameter=None, drain_width=None, drain_thickness=None):
+    """
+    Add vertical drains to the model
+    Parameters:
+    - drain_type: String - "COLUMN", "STRIP", or "SANDWALL"
+    - grid_type: String - "RECTANGULAR" or "TRIANGULAR"
+    - drain_diameter: Required for COLUMN drain type
+    - drain_width: Required for STRIP and SANDWALL drain types  
+    - drain_thickness: Required for STRIP and SANDWALL drain types
+    """
+    # Convert string types to enums
+    drain_type_enum = gl.models.dsettlement.drains.DrainType[drain_type]
+    grid_type_enum = gl.models.dsettlement.drains.DrainGridType[grid_type]
     
+    # Catching input errors
+    # violations = []
+    # if drain_type is None:
+    #     violations.append(vkt.InputViolation("Drain type must be specified"))
+    # if drain_spacing is None or drain_spacing <= 0:
+    #     violations.append(vkt.InputViolation("Drain spacing must be a positive number"))
+    # if drain_bottom is None:
+    #     violations.append(vkt.InputViolation("Drain bottom level must be specified"))
+    
+    # # Validate drain-specific parameters
+    # if drain_type == "COLUMN":
+    #     if drain_diameter is None or drain_diameter <= 0:
+    #         violations.append(vkt.InputViolation("Drain diameter must be a positive number for COLUMN drain type"))
+    # elif drain_type in ["STRIP", "SANDWALL"]:
+    #     if drain_width is None or drain_width <= 0:
+    #         violations.append(vkt.InputViolation("Drain width must be a positive number for STRIP/SANDWALL drain type"))
+    #     if drain_thickness is None or drain_thickness <= 0:
+    #         violations.append(vkt.InputViolation("Drain thickness must be a positive number for STRIP/SANDWALL drain type"))
+    
+    # if grid_type is None:
+    #     violations.append(vkt.InputViolation("Grid type must be specified"))
+    # if start_time is None or start_time < 0:
+    #     violations.append(vkt.InputViolation("Start time must be a non-negative number"))
+    # if end_time is None or end_time <= start_time:
+    #     violations.append(vkt.InputViolation("End time must be greater than start time"))
+    # if underpressure is None or underpressure < 0:
+    #     violations.append(vkt.InputViolation("Underpressure must be a non-negative number"))
+    # if tube_pressure is None or tube_pressure < 0:
+    #     violations.append(vkt.InputViolation("Tube pressure must be a non-negative number"))
+    # if water_head is None or water_head < 0:
+    #     violations.append(vkt.InputViolation("Water head must be a non-negative number"))
+    # if phreatic_level is None:
+    #     violations.append(vkt.InputViolation("Phreatic level must be specified"))
+
+    # if violations:
+    #     raise vkt.UserError("Invalid input for vertical drains", input_violations=violations)
+
+    # Fixed range values
+    range_from = 0
+    range_to = 50
+
+    # Create vertical drain with appropriate parameters based on drain type
+    if drain_type == "COLUMN":
+        vertical_drain = gl.models.dsettlement.drains.VerticalDrain(
+            drain_type=drain_type_enum,
+            range_from=range_from,
+            range_to=range_to,
+            bottom_position=drain_bottom,
+            center_to_center=drain_spacing,
+            diameter=drain_diameter,
+            grid=grid_type_enum,
+            schedule=gl.models.dsettlement.drains.ScheduleValuesSimpleInput(
+                start_of_drainage=timedelta(days=start_time),
+                phreatic_level_in_drain=phreatic_level,
+                begin_time=1,
+                end_time=end_time,
+                underpressure=underpressure,
+                tube_pressure_during_dewatering=tube_pressure,
+                water_head_during_dewatering=water_head,
+            ),
+        )
+    elif drain_type == "STRIP":
+        vertical_drain = gl.models.dsettlement.drains.VerticalDrain(
+            drain_type=drain_type_enum,
+            range_from=range_from,
+            range_to=range_to,
+            bottom_position=drain_bottom,
+            center_to_center=drain_spacing,
+            width=drain_width,
+            thickness=drain_thickness,
+            grid=grid_type_enum,
+            schedule=gl.models.dsettlement.drains.ScheduleValuesSimpleInput(
+                start_of_drainage=timedelta(days=start_time),
+                phreatic_level_in_drain=phreatic_level,
+                begin_time=1,
+                end_time=end_time,
+                underpressure=underpressure,
+                tube_pressure_during_dewatering=tube_pressure,
+                water_head_during_dewatering=water_head,
+            ),
+        )
+    elif drain_type == "SANDWALL":
+        vertical_drain = gl.models.dsettlement.drains.VerticalDrain(
+            drain_type=drain_type_enum,
+            range_from=range_from,
+            range_to=range_to,
+            bottom_position=drain_bottom,
+            center_to_center=drain_spacing,
+            width=drain_width,
+            grid=grid_type_enum,
+            schedule=gl.models.dsettlement.drains.ScheduleValuesSimpleInput(
+                start_of_drainage=timedelta(days=start_time),
+                phreatic_level_in_drain=phreatic_level,
+                begin_time=1,
+                end_time=end_time,
+                underpressure=underpressure,
+                tube_pressure_during_dewatering=tube_pressure,
+                water_head_during_dewatering=water_head,
+            ),
+        )
+
+    model.set_vertical_drain(vertical_drain)
+    return model
+    
+
 def run_model(model):
     """
     Run the model and return the SLD file content as a string

@@ -86,6 +86,7 @@ def extract_iteration_results_dset(sld_string, time, ground_level, loads_table):
         closest_table_end = min(tables, key=lambda x: abs(x['time'] - 21900))  # End of simulation
         results = {
             'ground_level': ground_level,
+            'zetting': closest_table['settlement'],
             'zetting na 9 maanden': closest_table_9m['settlement'],
             'new_level': round(find_new_level(ground_level, loads_table, settlement=closest_table['settlement']),2),
             'effective_vertical_stress': closest_table['effective_vertical_stress'],

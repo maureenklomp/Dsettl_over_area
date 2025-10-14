@@ -8,7 +8,7 @@ import numpy as np
 
 from src.Helper import create_df, find_ground_level, find_filtered_df_bh
 from src.Defaults import create_default_mat_prop, create_default_loads
-from src.Dsettl import create_Dset_geometry, create_dsettlement_model, get_layers, add_table_loads, run_model
+from src.Dsettl import create_Dset_geometry, create_dsettlement_model, get_layers, add_table_loads, run_model, add_vertical_drains
 from src.Dsettl_results import extract_iteration_results_dset
 from src.Visualizations import create_geo_profile_and_map, create_heatmap, create_settl_graphs
 from src.ASCII import get_train
@@ -21,6 +21,9 @@ from pathlib import Path
 
 model_types = {'NEN_BJERRUM': gl.models.dsettlement.internal.SoilModel.NEN_BJERRUM, 'NEN_KOPPEJAN': gl.models.dsettlement.internal.SoilModel.NEN_KOPPEJAN, 'ISOTACHE': gl.models.dsettlement.internal.SoilModel.ISOTACHE}
 cons_model_types = {"DARCY": gl.models.dsettlement.internal.ConsolidationModel.DARCY, "TERZAGHI": gl.models.dsettlement.internal.ConsolidationModel.TERZAGHI}
+
+drain_types = {"COLUMN": gl.models.dsettlement.drains.DrainType.COLUMN, "SANDWALL": gl.models.dsettlement.drains.DrainType.SANDWALL, "STRIP": gl.models.dsettlement.drains.DrainType.STRIP} 
+drain_grid_types = {"RECTANGULAR": gl.models.dsettlement.drains.DrainGridType.RECTANGULAR, "TRIANGULAR": gl.models.dsettlement.drains.DrainGridType.TRIANGULAR}
 
 times = {'1 month': 1, '6 months': 6, '9 months': 9, '1 year': 12, '60 years': 720, '100 years': 1200}
 
@@ -96,6 +99,29 @@ class Parametrization(vkt.Parametrization):
     page_1.tab_5.section_1.table_1.col_2 = vkt.NumberField('Time start [days]')
     page_1.tab_5.section_1.table_1.col_3 = vkt.NumberField('Load value [kPa]')
     page_1.tab_5.section_1.table_1.col_4 = vkt.NumberField('Load thickness [m]')
+
+    #Vertical drains tab
+    page_1.tab_6 = vkt.Tab("Vertical drains")
+    page_1.tab_6.section_1 = vkt.Section("Vertical drains", description="By default not implemented")
+    page_1.tab_6.section_1.boolean_field_1 = vkt.BooleanField("Include vertical drains in model", default=False, flex=100)
+
+    page_1.tab_6.section_2 = vkt.Section("Vertical drains properties", description="Properties and spacing of vertical drains", visible=vkt.IsTrue(vkt.Lookup('page_1.tab_6.section_1.boolean_field_1')))
+    page_1.tab_6.section_2.option_field_1 = vkt.OptionField("Drain type", options=list(drain_types.keys()), default="COLUMN", flex=100)
+    page_1.tab_6.section_2.number_field_1 = vkt.NumberField("Drain spacing (m)", default=2, min=0, step=0.1, flex=100)
+    page_1.tab_6.section_2.number_field_2 = vkt.NumberField("Drain bottom (m tov NAP)", default=-10, step=0.01, flex=100)
+    # Only for column drain type
+    page_1.tab_6.section_2.number_field_3 = vkt.NumberField("Drain diameter (m)", default=0.1, min=0, step=0.01, flex=100, visible=vkt.IsEqual(vkt.Lookup('page_1.tab_6.section_2.option_field_1'), 'COLUMN'))
+    #Only for strip and sandwall drain type
+    page_1.tab_6.section_2.number_field_4 = vkt.NumberField("Drain width (m)", default=0.1, min=0, step=0.01, flex=100, visible=vkt.Or(vkt.IsEqual(vkt.Lookup('page_1.tab_6.section_2.option_field_1'), 'STRIP'), vkt.IsEqual(vkt.Lookup('page_1.tab_6.section_2.option_field_1'), 'SANDWALL')))
+    page_1.tab_6.section_2.number_field_5 = vkt.NumberField("Drain thickness (m)", default=0.003, min=0, step=0.01, flex=100, visible=vkt.Or(vkt.IsEqual(vkt.Lookup('page_1.tab_6.section_2.option_field_1'), 'STRIP'), vkt.IsEqual(vkt.Lookup('page_1.tab_6.section_2.option_field_1'), 'SANDWALL')))
+
+    page_1.tab_6.section_2.option_field_2 = vkt.OptionField("Drain grid type", options=list(drain_grid_types.keys()), default="RECTANGULAR", flex=100)
+    page_1.tab_6.section_2.number_field_6 = vkt.NumberField("Start time (days)", default=0.1, min=0, step=0.1, flex=100)
+    page_1.tab_6.section_2.number_field_7 = vkt.NumberField("End time (days)", default=100.0, min=0, step=0.1, flex=100)
+    page_1.tab_6.section_2.number_field_8 = vkt.NumberField("Underpressure (kPa)", default=0, step=0.1, flex=100)
+    page_1.tab_6.section_2.number_field_9 = vkt.NumberField("Tube pressure (kPa)", default=0, step=0.1, flex=100)
+    page_1.tab_6.section_2.number_field_10 = vkt.NumberField("Water head (m)", default=-1.2, step=0.1, flex=100)
+    page_1.tab_6.section_2.number_field_11 = vkt.NumberField("Phreatic level (m tov NAP)", default=-1.2, step=0.1, flex=100)
 
 
     page_2 = vkt.Page("Results per location", views=["show_borehole_csv", "get_combined_geo_profile_and_map", "plot_settl_graph"], width=20)
@@ -231,13 +257,7 @@ class Controller(vkt.Controller):
         if not filtered_df_bh.empty:
             levels, layer_names = get_layers(filtered_df_bh, ground_level, material_table)
 
-        time_in_days = np.logspace(0.1, 4, 20)
         d, sld_file, sli_file = self.create_Dsettl_model(params, ground_level, levels, layer_names, location_id)
-
-        settlements = []
-        for t in time_in_days:
-            result_dict = extract_iteration_results_dset(d, time=t, ground_level=ground_level, loads_table=params.page_1.tab_5.section_1.table_1)
-            settlements.append(result_dict.get('zetting na 9 maanden', 0))
         
         fig = create_settl_graphs(d, log, ground_level, loads_table=params.page_1.tab_5.section_1.table_1)
 
@@ -250,16 +270,48 @@ class Controller(vkt.Controller):
         const_model = model_types[params.page_1.tab_1.section_1.autocomplete_field_1]
         consol_model = cons_model_types[params.page_1.tab_1.section_1.option_field_1]
 
+        # Check if vertical drains are included
+        bool_vert_drain = params.page_1.tab_6.section_1.boolean_field_1
+
         # groundlevel = -0.45
         GWT = params.page_1.tab_4.number_field_1
 
-        # Create loads table
-        loads_table = params.page_1.tab_5.section_1.table_1
-
-        model = create_dsettlement_model(material_properties, const_model, consol_model, GWT, levels, layer_names)
+        model = create_dsettlement_model(material_properties, const_model, consol_model, GWT, levels, layer_names, bool_vert_drain)
         
-        # if iterative_load_bool:
+        # Add loads
+        loads_table = params.page_1.tab_5.section_1.table_1
         model = add_table_loads(model, loads_table, ground_level)
+
+        # Add vertical drains if selected
+        if params.page_1.tab_6.section_1.boolean_field_1:
+            drain_type = params.page_1.tab_6.section_2.option_field_1  # This should be the string, not the enum
+            drain_spacing = params.page_1.tab_6.section_2.number_field_1
+            drain_bottom = params.page_1.tab_6.section_2.number_field_2
+            
+            if drain_type == "COLUMN":  # Compare with string, not enum
+                drain_diameter = params.page_1.tab_6.section_2.number_field_3
+                drain_width = None
+                drain_thickness = None
+            elif drain_type == "STRIP":
+                drain_diameter = None
+                drain_width = params.page_1.tab_6.section_2.number_field_4
+                drain_thickness = params.page_1.tab_6.section_2.number_field_5
+
+            elif drain_type == "SANDWALL":
+                drain_diameter = None
+                drain_width = params.page_1.tab_6.section_2.number_field_4
+                drain_thickness = params.page_1.tab_6.section_2.number_field_5
+
+
+            grid_type = params.page_1.tab_6.section_2.option_field_2  # This should be the string, not the enum
+            start_time = params.page_1.tab_6.section_2.number_field_6
+            end_time = params.page_1.tab_6.section_2.number_field_7
+            underpressure = params.page_1.tab_6.section_2.number_field_8
+            tube_pressure = params.page_1.tab_6.section_2.number_field_9
+            water_head = params.page_1.tab_6.section_2.number_field_10
+            phreatic_level = params.page_1.tab_6.section_2.number_field_11
+
+            model = add_vertical_drains(model, drain_type, drain_spacing, drain_bottom, grid_type, start_time, end_time, underpressure, tube_pressure, water_head, phreatic_level, drain_diameter=drain_diameter, drain_width=drain_width, drain_thickness=drain_thickness)
 
         result, sld_file, sli_file = run_model(model)
 
@@ -492,6 +544,7 @@ class Controller(vkt.Controller):
             x = point_data['Easting']
             y = point_data['Northing']
             value = point_data['restzetting (60 years-9 months)']
+            location_id = point_data['location id']
             
             lat, lon = vkt.RDWGSConverter.from_rd_to_wgs((x, y))
 
@@ -508,7 +561,7 @@ class Controller(vkt.Controller):
                 lat=lat,
                 lon=lon,
                 title=f"Point (Value: {value})",
-                description=f"Location: ({lat:.4f}, {lon:.4f})\nValue: {value}\nInterval: {interval_label}",
+                description=f"LocationID {location_id}: ({lat:.4f}, {lon:.4f})\nValue: {value}\nInterval: {interval_label}",
                 color=color,
                 size='small'
             )

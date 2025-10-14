@@ -181,12 +181,12 @@ def create_settl_graphs(model, log, ground_level, loads_table):
     settlements = []
     for t in time_in_days:
         result_dict = extract_iteration_results_dset(d, time=t, ground_level=ground_level, loads_table=loads_table)
-        settlements.append(result_dict.get('settlement', 0))
+        settlements.append(result_dict.get('zetting', 0))
 
     settlements_year = []
     for t in time_in_days_year:
         result_dict_year = extract_iteration_results_dset(d, time=t, ground_level=ground_level, loads_table=loads_table)
-        settlements_year.append(result_dict_year.get('settlement', 0))
+        settlements_year.append(result_dict_year.get('zetting', 0))
     
     # Add traces to correct subplots
     fig.add_trace(go.Scatter(x=time_in_days, y=settlements, mode='lines+markers', name='Total settlement'), row=1, col=1)
