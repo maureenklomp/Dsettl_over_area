@@ -106,9 +106,9 @@ class Parametrization(vkt.Parametrization):
     page_1.tab_6.section_1.boolean_field_1 = vkt.BooleanField("Include vertical drains in model", default=False, flex=100)
 
     page_1.tab_6.section_2 = vkt.Section("Vertical drains properties", description="Properties and spacing of vertical drains", visible=vkt.IsTrue(vkt.Lookup('page_1.tab_6.section_1.boolean_field_1')))
-    page_1.tab_6.section_2.option_field_1 = vkt.OptionField("Drain type", options=list(drain_types.keys()), default="COLUMN", flex=100)
-    page_1.tab_6.section_2.number_field_1 = vkt.NumberField("Drain spacing (m)", default=2, min=0, step=0.1, flex=100)
-    page_1.tab_6.section_2.number_field_2 = vkt.NumberField("Drain bottom (m tov NAP)", default=-10, step=0.01, flex=100)
+    page_1.tab_6.section_2.option_field_1 = vkt.OptionField("Drain type", options=list(drain_types.keys()), default="STRIP", flex=100)
+    page_1.tab_6.section_2.number_field_1 = vkt.NumberField("Drain spacing (m)", default=1, min=0, step=0.1, flex=100)
+    page_1.tab_6.section_2.number_field_2 = vkt.NumberField("Drain bottom (m tov NAP)", default=-4.5, step=0.01, flex=100)
     # Only for column drain type
     page_1.tab_6.section_2.number_field_3 = vkt.NumberField("Drain diameter (m)", default=0.1, min=0, step=0.01, flex=100, visible=vkt.IsEqual(vkt.Lookup('page_1.tab_6.section_2.option_field_1'), 'COLUMN'))
     #Only for strip and sandwall drain type
