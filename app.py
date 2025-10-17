@@ -558,11 +558,11 @@ class Controller(vkt.Controller):
 
         levels, layer_names = get_layers(filtered_df_bh, ground_level, material_table)
 
-        # result, sld_file, sli_file = self.create_Dsettl_model(params, ground_level, levels, layer_names)
-        sli_file = self.create_Dsettl_model(params, ground_level, levels, layer_names)
+        result, sld_file, sli_file = self.create_Dsettl_model(params, ground_level, levels, layer_names)
+        # sli_file = self.create_Dsettl_model(params, ground_level, levels, layer_names)
 
-        # return vkt.DownloadResult(zipped_files={f"{location_id}.sli": sli_file, f"{location_id}.sld": sld_file}, file_name=f"{location_id}_model.zip")
-        return vkt.DownloadResult(zipped_files={f"{location_id}.sli": sli_file}, file_name=f"{location_id}_model.zip")
+        return vkt.DownloadResult(zipped_files={f"{location_id}.sli": sli_file, f"{location_id}.sld": sld_file}, file_name=f"{location_id}_model.zip")
+        # return vkt.DownloadResult(zipped_files={f"{location_id}.sli": sli_file}, file_name=f"{location_id}_model.zip")
     
 
     @vkt.MapView("Restzetting map")
