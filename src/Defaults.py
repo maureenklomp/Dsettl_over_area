@@ -22,11 +22,12 @@ def create_default_mat_prop():
     name = ['Stiff fine-grained SAND', 'Stiff SAND', 'Dense SAND', 'SAND', 'Silty SAND', 'Silty CLAY', 'CLAY', 'Organic CLAY', 'Peat']
     y_dry = [19.0, 19.0, 19.0, 19.0, 18.0, 18.0, 17.0, 13.0, 12.0]  # in kPa
     y_sat = [21.0, 21.0, 21.0, 21.0, 20.0, 18.0, 17.0, 13.0, 12.0]  # in kPa
-    color = ['yellow', 'yellow', 'yellow', 'yellow', 'lightyellow', 'gray', 'darkgray', 'brown', 'red']
+    color = ['yellow', 'yellow', 'yellow', 'yellow', 'lightyellow', 'gray', 'darkgray', 'brown', 'maroon']
     RR = [0.0008, 0.0008, 0.0008, 0.0008, 0.0017, 0.038, 0.051, 0.102, 0.102]
     CR = [0.0023, 0.0023, 0.0023, 0.0023, 0.0051, 0.115, 0.153, 0.307, 0.307]  
     Ca = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0046, 0.0061, 0.015, 0.015]
     cv = [1.00e-7, 1.00e-7, 1.00e-7, 1.00e-7, 1.70e-8, 3.00e-7, 1.10e-7, 4.00e-8, 6.00e-8]  # in m²/s
+    ch_cv = [1, 1, 1, 1, 1, 1, 1, 2, 3]  # dimensionless
     pop_layer = [5.0, 5.0, 5.0, 5.0, 5.0, 3.0, 3.0, 3.0, 2.0]  # in kPa
 
     material_props = []
@@ -40,7 +41,8 @@ def create_default_mat_prop():
             'col_6': CR[i],
             'col_7': Ca[i],
             'col_8': cv[i],
-            'col_9': pop_layer[i],
+            'col_9': ch_cv[i],
+            'col_10': pop_layer[i],
         })
 
     return material_props
@@ -51,10 +53,10 @@ def create_default_loads():
     Create default load properties for uniform loads on the area
     """
 
-    name = ['Load 1', 'Load 2', 'Unloading']
-    time_start = [0, 0, 300]
-    load_value = [20, 20, -20]
-    load_thickness = [1, 0.5, 0.3]
+    name = ['Ophoging', 'Zettingscompensatie', 'Overhoogte', 'Ontgraven']
+    time_start = [0, 0, 0, 271]
+    load_value = [18, 18, 18, -18]
+    load_thickness = [1, 0.5, 0.3, 0.3]
     
     loads = []
     for i in range(len(time_start)):

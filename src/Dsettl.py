@@ -6,7 +6,7 @@ import geolib as gl
 from pathlib import Path
 from datetime import timedelta
 
-def create_dsettlement_model(material_properties, const_model, consol_model, GWT, levels, layer_names, bool_vert_drain):
+def create_dsettlement_model(material_properties, const_model, consol_model, GWT, levels, layer_names, bool_vert_drain, unloading_time, end_time, cut_off_bool, cutoff):
     
     # Catching input errors
     violations = []
@@ -31,6 +31,8 @@ def create_dsettlement_model(material_properties, const_model, consol_model, GWT
                     is_horizontal_displacements=False,
                     is_secondary_swelling=False)
     
+    model.set_any_calculation_options(end_of_consolidation=end_time, precon_pressure_within_layer = 3)
+    model.set_calculation_times([timedelta(days=0), timedelta(days=1), timedelta(days=unloading_time), timedelta(days=end_time)])
     # Create soil types
     # material_layers = ["SAND", "Peat", "Silty SAND", "Organic CLAY", "Peat", "Silty CLAY"]
 
@@ -51,6 +53,7 @@ def create_dsettlement_model(material_properties, const_model, consol_model, GWT
             if not s.is_drained:
                 s.storage_parameters.storage_type = 0
                 s.storage_parameters.vertical_consolidation_coefficient.mean = props['cv'] # m²/s
+                s.storage_parameters.permeability_horizontal_factor.mean = props['ch_cv'] # dimensionless
 
             s.isotache_parameters.precon_isotache_type = gl.soils.StateType.POP
             s.soil_state.pop_layer.mean = props['pop_layer']  # kN/m2
@@ -69,20 +72,44 @@ def create_dsettlement_model(material_properties, const_model, consol_model, GWT
     hl = model.add_head_line([p1, p2], is_phreatic=True)
 
     # Boundary lines
-    # layers = [-20.0, -8.75, -8.0, -3.75, -3.0, -1.5, ground_level]
-
     p_left = []
     p_right = []
-
     boundary_lines = []
+    filtered_levels = []
+    filtered_layer_names = []
 
     for i in range(len(levels)):
-        p_left.append(gl.geometry.Point(x=0, z=levels[i]))
-        p_right.append(gl.geometry.Point(x=50, z=levels[i]))
+        if cut_off_bool == True:
+            if levels[i] > cutoff:
+                filtered_levels.append(levels[i])
+        else:
+            filtered_levels.append(levels[i])
+
+    # Handle layer names separately - they correspond to layers between boundaries
+    if cut_off_bool:
+        # Find which layers are above the cutoff
+        # Layer j exists between levels[j] and levels[j+1] 
+        # So layer j should be included if levels[j+1] > cutoff (the top of the layer is above cutoff)
+        for j in range(len(layer_names)):
+            if j + 1 < len(levels) and levels[j + 1] > cutoff:  # levels[j+1] is the top of layer j
+                filtered_layer_names.append(layer_names[j])
+    else:
+        filtered_layer_names = layer_names.copy()
+
+    # If cutoff is applied, add cutoff as the new bottom boundary
+    if cut_off_bool and len(filtered_levels) > 0:
+        filtered_levels.append(cutoff)
+
+    # Now create points and boundaries using the filtered levels
+    for i, level in enumerate(filtered_levels):
+        p_left.append(gl.geometry.Point(x=0, z=level))
+        p_right.append(gl.geometry.Point(x=50, z=level))
         boundary_lines.append(model.add_boundary([p_left[i], p_right[i]]))
-    
-    for j in range(len(layer_names)):
-        model.add_layer(boundary_top=boundary_lines[j], boundary_bottom=boundary_lines[j + 1], material_name= layer_names[j], head_line_top=hl, head_line_bottom=hl)
+
+    # Use filtered_layer_names for the layers
+    for j in range(len(boundary_lines)-1):
+        layer_name = filtered_layer_names[j] if j < len(filtered_layer_names) else "Unknown"
+        model.add_layer(boundary_top=boundary_lines[j], boundary_bottom=boundary_lines[j + 1], material_name=layer_name, head_line_top=hl, head_line_bottom=hl)
 
     # Create vertical
     p0 = gl.geometry.Point(x=25, z=0)
@@ -336,10 +363,15 @@ def get_layers(filtered_df_bh, ground_level, material_table):
     reversed_array = depth_base_array[::-1].tolist()
 
     names_array = np.array(names)
+    # Reverse the names array to match the reversed levels
     layer_names = names_array[::-1].tolist()
     
     # Ensure ground_level is added to each element
     levels = reversed_array + [float(ground_level)]
+    
+    # Now both levels and layer_names are ordered from bottom to top
+    # levels: boundaries from bottom to top + ground_level
+    # layer_names: materials from bottom to top (matching the layer order)
 
     return levels, layer_names
 

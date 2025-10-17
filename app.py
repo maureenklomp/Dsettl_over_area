@@ -22,6 +22,13 @@ from pathlib import Path
 model_types = {'NEN_BJERRUM': gl.models.dsettlement.internal.SoilModel.NEN_BJERRUM, 'NEN_KOPPEJAN': gl.models.dsettlement.internal.SoilModel.NEN_KOPPEJAN, 'ISOTACHE': gl.models.dsettlement.internal.SoilModel.ISOTACHE}
 cons_model_types = {"DARCY": gl.models.dsettlement.internal.ConsolidationModel.DARCY, "TERZAGHI": gl.models.dsettlement.internal.ConsolidationModel.TERZAGHI}
 
+precon_press_within_a_lyr = {"CONSTANT_NO_CORRECTION": gl.models.dsettlement.internal.PreconPressureWithinLayer.CONSTANT_NO_CORRECTION,
+                             "CONSTANT_CORRECTION_T0": gl.models.dsettlement.internal.PreconPressureWithinLayer.CONSTANT_CORRECTION_T0,
+                             "CONSTANT_CORRECTION_ALL_T": gl.models.dsettlement.internal.PreconPressureWithinLayer.CONSTANT_CORRECTION_ALL_T,
+                             "VARIABLE_NO_CORRECTION": gl.models.dsettlement.internal.PreconPressureWithinLayer.VARIABLE_NO_CORRECTION,
+                             "VARIABLE_CORRECTION_T0": gl.models.dsettlement.internal.PreconPressureWithinLayer.VARIABLE_CORRECTION_T0,
+                             "VARIABLE_CORRECTION_ALL_T": gl.models.dsettlement.internal.PreconPressureWithinLayer.VARIABLE_CORRECTION_ALL_T}
+
 drain_types = {"COLUMN": gl.models.dsettlement.drains.DrainType.COLUMN, "SANDWALL": gl.models.dsettlement.drains.DrainType.SANDWALL, "STRIP": gl.models.dsettlement.drains.DrainType.STRIP} 
 drain_grid_types = {"RECTANGULAR": gl.models.dsettlement.drains.DrainGridType.RECTANGULAR, "TRIANGULAR": gl.models.dsettlement.drains.DrainGridType.TRIANGULAR}
 
@@ -56,6 +63,7 @@ class Parametrization(vkt.Parametrization):
     page_1.tab_1.section_1 = vkt.Section("Model types", description="Types for calculation and consolidation")
     page_1.tab_1.section_1.autocomplete_field_1 = vkt.AutocompleteField("Settlement calculation method", options=list(model_types.keys()), default='NEN_BJERRUM')
     page_1.tab_1.section_1.option_field_1 = vkt.OptionField("Consoldiation Model", options=list(cons_model_types.keys()), default='DARCY', variant="radio")
+    page_1.tab_1.section_1.autocomplete_field_2 = vkt.AutocompleteField("Settlement calculation method", options=list(precon_press_within_a_lyr.keys()), default='CONSTANT_NO_CORRECTION')
     
     # Material Properties tab
     page_1.tab_1.section_2 = vkt.Section("Material properties")
@@ -69,8 +77,9 @@ class Parametrization(vkt.Parametrization):
     page_1.tab_1.section_2.table_1.col_6 = vkt.NumberField('CR')
     page_1.tab_1.section_2.table_1.col_7 = vkt.NumberField('Ca')
     page_1.tab_1.section_2.table_1.col_8 = vkt.NumberField('cv')
-    page_1.tab_1.section_2.table_1.col_9 = vkt.NumberField('POP')
-            
+    page_1.tab_1.section_2.table_1.col_9 = vkt.NumberField('ch_cv')
+    page_1.tab_1.section_2.table_1.col_10 = vkt.NumberField('POP')
+
 
     
     # Locations tab
@@ -82,7 +91,8 @@ class Parametrization(vkt.Parametrization):
     page_1.tab_3 = vkt.Tab("Borehole data")
     page_1.tab_3.file_field_1 = vkt.FileField("Field Geological Descriptions", flex=100, file_types=[".csv"])
     # page_1.tab_3.option_field_1 = vkt.OptionField("Location ID for preview", options=get_location_filter_list, visible=_filter_list_vis)
-    
+    page_1.tab_3.boolean_field_1 = vkt.BooleanField("Cut off bottom", default=False, flex=100)
+    page_1.tab_3.number_field_1 = vkt.NumberField("Cut off level (m tov NAP)", default=-15, step=0.1, flex=100, visible=vkt.IsTrue(vkt.Lookup('page_1.tab_3.boolean_field_1')))
 
     # Geometry tab
     page_1.tab_4 = vkt.Tab("Ground Water Table")
@@ -99,6 +109,10 @@ class Parametrization(vkt.Parametrization):
     page_1.tab_5.section_1.table_1.col_2 = vkt.NumberField('Time start [days]')
     page_1.tab_5.section_1.table_1.col_3 = vkt.NumberField('Load value [kPa]')
     page_1.tab_5.section_1.table_1.col_4 = vkt.NumberField('Load thickness [m]')
+
+    page_1.tab_5.section_2 = vkt.Section("Calculation times", description="For which times do you want to see the settlement?")
+    page_1.tab_5.section_2.number_field_1 = vkt.NumberField("Time of unloading:", default=270, min=1, step=1)
+    page_1.tab_5.section_2.number_field_2 = vkt.NumberField("End of consolidation time:", default=21900, min=1, step=1)
 
     #Vertical drains tab
     page_1.tab_6 = vkt.Tab("Vertical drains")
@@ -243,6 +257,10 @@ class Controller(vkt.Controller):
     # This shows the settlement graph for a selected location
     @vkt.PlotlyView('Settlement over time', duration_guess=1)
     def plot_settl_graph(self, params, **kwargs):
+
+        unloading_time = params.page_1.tab_5.section_2.number_field_1
+        end_time = params.page_1.tab_5.section_2.number_field_2
+
         # Create dataframes for locations and boreholes
         df_loc, df_bh = self.input_csvs(params)
 
@@ -257,14 +275,14 @@ class Controller(vkt.Controller):
         if not filtered_df_bh.empty:
             levels, layer_names = get_layers(filtered_df_bh, ground_level, material_table)
 
-        d, sld_file, sli_file = self.create_Dsettl_model(params, ground_level, levels, layer_names, location_id)
-        
-        fig = create_settl_graphs(d, log, ground_level, loads_table=params.page_1.tab_5.section_1.table_1)
+        d, sld_file, sli_file = self.create_Dsettl_model(params, ground_level, levels, layer_names)
+
+        fig = create_settl_graphs(d, log, ground_level, loads_table=params.page_1.tab_5.section_1.table_1, unloading_time=unloading_time, end_time=end_time)
 
         return vkt.PlotlyResult(fig)  # Changed from: return fig
         
 
-    def create_Dsettl_model(self, params, ground_level, levels, layer_names, location_id):
+    def create_Dsettl_model(self, params, ground_level, levels, layer_names):
         # Create the model with misc. options.
         material_properties = params.page_1.tab_1.section_2.table_1
         const_model = model_types[params.page_1.tab_1.section_1.autocomplete_field_1]
@@ -276,7 +294,15 @@ class Controller(vkt.Controller):
         # groundlevel = -0.45
         GWT = params.page_1.tab_4.number_field_1
 
-        model = create_dsettlement_model(material_properties, const_model, consol_model, GWT, levels, layer_names, bool_vert_drain)
+        # Times
+        unloading_time = params.page_1.tab_5.section_2.number_field_1
+        end_time = params.page_1.tab_5.section_2.number_field_2
+
+        # Cut off layers
+        cut_off_bool = params.page_1.tab_3.boolean_field_1
+        cut_off_level = params.page_1.tab_3.number_field_1
+
+        model = create_dsettlement_model(material_properties, const_model, consol_model, GWT, levels, layer_names, bool_vert_drain, unloading_time=unloading_time, end_time=end_time, cut_off_bool=cut_off_bool, cutoff=cut_off_level)
         
         # Add loads
         loads_table = params.page_1.tab_5.section_1.table_1
@@ -335,7 +361,6 @@ class Controller(vkt.Controller):
 
     # ALL LOCATIONS
     # This shows a table of the settlement results at a certain time for all locations
-    @vkt.memoize
     def settl_results(self, params, **kwargs):
         # Create dataframes for locations and boreholes
         df_loc, df_bh = self.input_csvs(params)
@@ -344,13 +369,16 @@ class Controller(vkt.Controller):
 
         # loads table
         loads_table = params.page_1.tab_5.section_1.table_1
-        
-        # Define time in days:
-        time_in_days = times[params.page_3.section_2.number_field_1] * 30 # Approximate conversion from months to days
 
         # Get all location IDs (including those without borehole data)
         valid_location_ids = [loc_id for loc_id in df_loc['Location ID'].unique() if loc_id != '' and pd.notna(loc_id)]
         total_calculations = len(valid_location_ids)
+
+        unloading_time = params.page_1.tab_5.section_2.number_field_1
+        end_time = params.page_1.tab_5.section_2.number_field_2
+
+        # Define time in days:
+        time_in_days = unloading_time 
 
         print(f"Total locations to process: {total_calculations}")
         print(f"Location IDs: {valid_location_ids}")
@@ -391,9 +419,9 @@ class Controller(vkt.Controller):
                     levels, layer_names = get_layers(filtered_df_bh, ground_level, material_table)
 
                     # Create and run model
-                    d, sld_file, sli_file = self.create_Dsettl_model(params, ground_level, levels, layer_names, location_id)
-                    
-                    result_dict = extract_iteration_results_dset(d, time=time_in_days, ground_level=ground_level, loads_table=loads_table)
+                    d, sld_file, sli_file = self.create_Dsettl_model(params, ground_level, levels, layer_names)
+
+                    result_dict = extract_iteration_results_dset(d, time=time_in_days, ground_level=ground_level, loads_table=loads_table, unloading_time=unloading_time, end_time=end_time)
                     
                     # Add location ID and coordinates to the result dictionary
                     result_dict['Location_ID'] = location_id
@@ -519,7 +547,7 @@ class Controller(vkt.Controller):
 
         levels, layer_names = get_layers(filtered_df_bh, ground_level, material_table)
 
-        result, sld_file, sli_file = self.create_Dsettl_model(params, ground_level, levels, layer_names, location_id)
+        result, sld_file, sli_file = self.create_Dsettl_model(params, ground_level, levels, layer_names)
 
         return vkt.DownloadResult(zipped_files={f"{location_id}.sli": sli_file, f"{location_id}.sld": sld_file}, file_name=f"{location_id}_model.zip")
 

@@ -164,7 +164,7 @@ def create_heatmap(df, values, names, point_size, toggle_annotations):
     return svg_data
 
 
-def create_settl_graphs(model, log, ground_level, loads_table):
+def create_settl_graphs(model, log, ground_level, loads_table, unloading_time, end_time):
     d = model
     
     # Create subplots: 2 rows, 1 column
@@ -180,12 +180,12 @@ def create_settl_graphs(model, log, ground_level, loads_table):
     
     settlements = []
     for t in time_in_days:
-        result_dict = extract_iteration_results_dset(d, time=t, ground_level=ground_level, loads_table=loads_table)
+        result_dict = extract_iteration_results_dset(d, time=t, ground_level=ground_level, loads_table=loads_table, unloading_time=unloading_time, end_time=end_time)
         settlements.append(result_dict.get('zetting', 0))
 
     settlements_year = []
     for t in time_in_days_year:
-        result_dict_year = extract_iteration_results_dset(d, time=t, ground_level=ground_level, loads_table=loads_table)
+        result_dict_year = extract_iteration_results_dset(d, time=t, ground_level=ground_level, loads_table=loads_table, unloading_time=unloading_time, end_time=end_time)
         settlements_year.append(result_dict_year.get('zetting', 0))
     
     # Add traces to correct subplots

@@ -92,7 +92,8 @@ def materials_to_dict(material_props):
             "rr": prop['col_5'],                # reloading ratio RR from col_5
             "ca": prop['col_7'],                # secondary compression Ca from col_7
             "is_drained": is_drained,           # determined based on material type
-            "pop_layer": prop['col_9'],         # POP from col_9
+            "pop_layer": prop['col_10'],        # POP from col_10
+            "ch_cv": prop['col_9'],             # horizontal consolidation coefficient factor from col_9
         }
 
     return material_properties

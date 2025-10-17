@@ -2,7 +2,7 @@ import re
 import pandas as pd
 from src.Helper import find_new_level
 
-def extract_iteration_results_dset(sld_string, time, ground_level, loads_table):
+def extract_iteration_results_dset(sld_string, time, ground_level, loads_table, unloading_time, end_time):
     """
     Extract settlement results from SLD file content at a specific time.
     
@@ -81,9 +81,9 @@ def extract_iteration_results_dset(sld_string, time, ground_level, loads_table):
     # Find the table with time closest to the requested time
     if tables:
         closest_table = min(tables, key=lambda x: abs(x['time'] - time))
-        closest_table_9m = min(tables, key=lambda x: abs(x['time'] - 270))  # 9 months in days
-        closest_table_60y = min(tables, key=lambda x: abs(x['time'] - 21900))  # 60 years in days
-        closest_table_end = min(tables, key=lambda x: abs(x['time'] - 21900))  # End of simulation
+        closest_table_9m = min(tables, key=lambda x: abs(x['time'] - unloading_time))  # 9 months in days
+        closest_table_60y = min(tables, key=lambda x: abs(x['time'] - end_time))  # 60 years in days
+        closest_table_end = min(tables, key=lambda x: abs(x['time'] - end_time))  # End of simulation
         results = {
             'ground_level': ground_level,
             'zetting': closest_table['settlement'],
