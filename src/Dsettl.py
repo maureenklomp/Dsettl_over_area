@@ -301,22 +301,26 @@ def run_model(model):
     Run the model and return the SLD file content as a string
     """
     # Try execution approaches
-    file = vkt.File()
-    path = Path(file.source)
-    model.serialize(path)
+    # file = vkt.File()
+    # path = Path(file.source)
+    # model.serialize(path)
+
     
-    dsettlementanalysis = vkt.dsettlement.DSettlementAnalysis(input_file=file)
-    dsettlementanalysis.execute(timeout=600)
+    # dsettlementanalysis = vkt.dsettlement.DSettlementAnalysis(input_file=file)
+    # dsettlementanalysis.execute(timeout=600)
 
-    # Obtain the result file.
-    sld_file = dsettlementanalysis.get_sld_file()
-    sli_file = file
+    # # Obtain the result file.
+    # sld_file = dsettlementanalysis.get_sld_file()
+    # sli_file = file
 
-    # Read the raw content
-    sld_string = sld_file.getvalue()
+    # # Read the raw content
+    # sld_string = sld_file.getvalue()
 
-    return sld_string, sld_file, sli_file
+    # return sld_string, sld_file, sli_file
 
+    # !! If the model does not run
+    input_test = Path("Test.sli")
+    return model.serialize(input_test)
 
 def create_Dset_geometry(df_bh, ground_level, material_table):
         """
