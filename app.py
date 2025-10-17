@@ -275,7 +275,16 @@ class Controller(vkt.Controller):
         if not filtered_df_bh.empty:
             levels, layer_names = get_layers(filtered_df_bh, ground_level, material_table)
 
+        time_in_days = np.logspace(0.1, 4, 20)
+
         d, sld_file, sli_file = self.create_Dsettl_model(params, ground_level, levels, layer_names)
+
+        settlements = []
+        for t in time_in_days:
+            result_dict = extract_iteration_results_dset(d, time=t, ground_level=ground_level, loads_table=params.page_1.tab_5.section_1.table_1)
+            settlements.append(result_dict.get('zetting na 9 maanden', 0))
+
+        
 
         fig = create_settl_graphs(d, log, ground_level, loads_table=params.page_1.tab_5.section_1.table_1, unloading_time=unloading_time, end_time=end_time)
 
@@ -301,6 +310,8 @@ class Controller(vkt.Controller):
         # Cut off layers
         cut_off_bool = params.page_1.tab_3.boolean_field_1
         cut_off_level = params.page_1.tab_3.number_field_1
+
+        
 
         model = create_dsettlement_model(material_properties, const_model, consol_model, GWT, levels, layer_names, bool_vert_drain, unloading_time=unloading_time, end_time=end_time, cut_off_bool=cut_off_bool, cutoff=cut_off_level)
         
