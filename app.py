@@ -1,5 +1,6 @@
 from tkinter.font import names
 import viktor as vkt
+import geolib as gl
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots 
 from viktor.views import PlotlyView, PlotlyResult
@@ -14,7 +15,7 @@ from src.Visualizations import create_geo_profile_and_map, create_heatmap, creat
 from src.ASCII import get_train
 
 from io import BytesIO, StringIO
-import geolib as gl
+
 from datetime import timedelta
 import zipfile
 from pathlib import Path
@@ -281,7 +282,7 @@ class Controller(vkt.Controller):
 
         settlements = []
         for t in time_in_days:
-            result_dict = extract_iteration_results_dset(d, time=t, ground_level=ground_level, loads_table=params.page_1.tab_5.section_1.table_1)
+            result_dict = extract_iteration_results_dset(d, time=t, ground_level=ground_level, loads_table=params.page_1.tab_5.section_1.table_1, unloading_time=unloading_time, end_time=end_time)
             settlements.append(result_dict.get('zetting na 9 maanden', 0))
 
         
