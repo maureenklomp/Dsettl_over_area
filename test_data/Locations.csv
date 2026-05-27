@@ -1,0 +1,6 @@
+Location_ID,X_coordinate,Y_coordinate,Description
+LOC001,123456.78,987654.32,Building A foundation
+LOC002,123500.45,987600.12,Building B foundation
+LOC003,123550.23,987650.89,Parking area
+LOC004,123480.67,987680.45,Road intersection
+LOC005,123520.34,987620.78,Green area
