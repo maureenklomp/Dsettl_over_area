@@ -1,7 +1,9 @@
-viktor==14.24.0
+viktor==14.27.0
 plotly==5.16.0
+pandas
 pyproj
 # scipy==1.13
 scipy
 numpy
 d-geolib
+pytz
