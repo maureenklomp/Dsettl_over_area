@@ -1,0 +1,28 @@
+name;soilsoiltype;soilgamdry;soilgamwet;soilphi;soilcohesion;soilcolor
+Gravel, none, loose;0;18;20;35;0;7237245
+Gravel, none, medium;0;19;21;37.5;0;7564925
+Gravel, none, dense;0;20;22;40;0;7892605
+Gravel, silty, loose;0;19;21;32.5;0;7893885
+Gravel, silty, medium;0;20;22;35;0;8221565
+Gravel, silty, dense;0;21;22.5;40;0;8549245
+Sand, none, loose;1;18;20;32.5;0;55279
+Sand, none, medium;1;19;21;35;0;382959
+Sand, none, dense;1;20;22;40;0;710639
+Sand, sil/cla, qc=8;1;19;21;30;0;2351599
+Sand, sil/cla, qc=12;1;19;21;32.5;0;2679279
+Silt, sl san, soft;2;20;20;30;1;12489852
+Silt, sl san, moderate;2;21;21;32.5;2.5;13145212
+Silt, sl san, stiff;2;22;22;35;3.8;13472892
+Silt, very sandy;2;20;20;35;1;14457212
+Clay, clean, soft;3;17;17;17.5;5;12510881
+Clay, clean, moderate;3;19;19;17.5;13;13166241
+Clay, clean, stiff;3;20;20;25;15;13493921
+Clay, sl san, soft;3;18;18;22.5;5;14478241
+Clay, sl san, moderate;3;20;20;22.5;13;13824161
+Clay, sl san, stiff;3;21;21;27.5;15;14479521
+Clay, very sandy;3;20;20;32.5;1;14807201
+Clay, slightly organic;3;15;15;15;1;15791521
+Clay, very organic;3;16;16;15;1;16448161
+Peat, none, weak;4;12;12;15;2.5;2759589
+Peat, none, moderate;4;13;13;15;5;3087269
+Undetermined;2;0.01;0.02;0;0;16777215
